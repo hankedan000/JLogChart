@@ -8,8 +8,8 @@ package com.hankedan.jlogchart;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
-import java.awt.Image;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JScrollBar;
@@ -21,7 +21,7 @@ import javax.swing.plaf.basic.BasicScrollBarUI;
  */
 public class MiniMapScrollbar extends JScrollBar {
     public interface MiniMapable {
-        public Image getMiniMapImage();
+        public BufferedImage getMiniMapImage();
     }
     
     private class MiniMapScrollbarUI extends BasicScrollBarUI {
@@ -37,7 +37,7 @@ public class MiniMapScrollbar extends JScrollBar {
         @Override
         protected void paintThumb(Graphics g, JComponent c, Rectangle bounds) {
             // Draw transparent fill rect
-            g.setColor(new Color(255, 255, 255, 50));
+            g.setColor(new Color(255, 255, 255, 25));
             g.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
             // Draw border rect
             g.setColor(Color.LIGHT_GRAY);
@@ -50,7 +50,7 @@ public class MiniMapScrollbar extends JScrollBar {
                 return;
             }
             
-            Image mmImg = miniMapable.getMiniMapImage();
+            BufferedImage mmImg = miniMapable.getMiniMapImage();
             if (mmImg != null) {
                 g.drawImage(mmImg, bounds.x, bounds.y, bounds.width, bounds.height, null);
             }

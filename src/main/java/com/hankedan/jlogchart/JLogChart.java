@@ -12,7 +12,6 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
-import java.awt.Image;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.MouseEvent;
@@ -129,6 +128,9 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
 
     // Map of all added chart series data vectors
     private final List<Series> allSeries = new ArrayList<>();
+    
+    // A "full view" image of all the series used for minimap scrollbar
+    private BufferedImage miniMapImage = null;
 
     public JLogChart() {
         initComponents();
@@ -371,6 +373,18 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
             }
         }
         return null;
+    }
+    
+    private void updateMiniMapImage() {
+        BoundedRangeModel fullView = new DefaultBoundedRangeModel();
+        fullView.setMinimum(sampRange.getMinimum());
+        fullView.setMaximum(sampRange.getMaximum());
+        fullView.setExtent(sampRange.getMaximum());
+        
+        // Paint an image for the full chart series
+        miniMapImage = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics g = miniMapImage.getGraphics();
+        drawVisibleSeries(g, fullView);
     }
     
     private void updateAfterDataChange() {
@@ -860,17 +874,20 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     @Override
     public void seriesVisibilityChanged(String seriesName, boolean visible) {
         repaint();
+        updateMiniMapImage();
     }
 
     @Override
     public void seriesColorChanged(String seriesName, Color oldColor, Color newColor) {
         repaint();
+        updateMiniMapImage();
     }
 
     @Override
     public void seriesDataChanged(String seriesName) {
         // Recompute view bounds, y-scale, etc. then repaint the chart
         updateAfterDataChange();
+        updateMiniMapImage();
     }
 
     @Override
@@ -893,22 +910,11 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     }
     
     @Override
-    public Image getMiniMapImage() {
-        /**
-         * TODO I can improve performance by only drawing this image once when
-         * the series data changes or visibility is modified.
-         */
-        BoundedRangeModel fullView = new DefaultBoundedRangeModel();
-        fullView.setMinimum(sampRange.getMinimum());
-        fullView.setMaximum(sampRange.getMaximum());
-        fullView.setExtent(sampRange.getMaximum());
-        
-        // Paint an image for the full chart series
-        BufferedImage mmImg = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics g = mmImg.getGraphics();
-        drawVisibleSeries(g, fullView);
-        
-        return mmImg;
+    public BufferedImage getMiniMapImage() {
+        if (miniMapImage == null) {
+            updateMiniMapImage();
+        }
+        return miniMapImage;
     }
 
     /**
