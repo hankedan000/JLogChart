@@ -788,10 +788,10 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
                 JLogChart jlc = new JLogChart();
                 jlc.setPreferredSize(new Dimension(600, 400));
                 jlc.setSingleY_Scale(true);
+                jlc.setSampleRate(100.0);
                 frame.add(jlc, BorderLayout.CENTER);
                 
-                jlc.setSampleRate(100.0);
-                double N_CYCLES = 3;
+                int N_CYCLES = 3;
                 int N_SAMPS = 1000;
                 double radPerSamp = Math.PI * 2 * N_CYCLES / N_SAMPS;
                 List<Double> sinData = new ArrayList();
