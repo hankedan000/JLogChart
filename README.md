@@ -1,5 +1,13 @@
 # JLogChart
-A simple plotting component that I made while developing my racing data acquisition project. The UI is inspired by [MegaLogViewer](https://www.efianalytics.com/MegaLogViewer/).
+A simple plotting component that I made while developing my racing data acquisition project. I tried a couple different plotting libraries before deciding to "roll my own". Many of the libraries I tried weren't fast enough, or didn't give me enough flexibility to control the UI like I wanted. This library is heavily inspired by the UI in [MegaLogViewer](https://www.efianalytics.com/MegaLogViewer/).
+
+# Features
+ * dark theme :sunglasses:
+ * pan & zoom
+ * click to pan
+ * mini map scrollbar
+ * toggle series visibility
+ * customize colors
 
 # Example
 ![JLogChartDemo](docs/imgs/JLogChartDemo.png?raw=true "JLogChartDemo")
