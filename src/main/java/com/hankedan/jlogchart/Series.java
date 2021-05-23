@@ -19,6 +19,7 @@ public class Series {
     public interface SeriesChangeListener {
         public void seriesSubTitleChanged(String seriesName, String oldSubTitle, String newSubTitle);
         public void seriesVisibilityChanged(String seriesName, boolean visible);
+        public void seriesBoldnessChanged(String seriesName, boolean bold);
         public void seriesColorChanged(String seriesName, Color oldColor, Color newColor);
         public void seriesDataChanged(String seriesName);
     }
@@ -32,6 +33,7 @@ public class Series {
     private double maxValue = Double.MIN_VALUE;
     private Color color = Color.WHITE;
     private boolean visible = true;
+    private boolean bolded = false;
     private final List<SeriesChangeListener> listeners = new ArrayList();
 
     public Series(String name, Color color, List<Double> data) {
@@ -53,42 +55,57 @@ public class Series {
         return maxValue;
     }
 
-    public void setSubTile(String newSubTitle) {
+    public Series setSubTitle(String newSubTitle) {
         String oldSubTitle = this.subTitle;
         this.subTitle = newSubTitle;
         for (SeriesChangeListener l : listeners) {
             l.seriesSubTitleChanged(name, oldSubTitle, newSubTitle);
         }
+        return this;
     }
     
     public String getSubTitle() {
         return this.subTitle;
     }
     
-    public void setColor(Color newColor) {
+    public Series setColor(Color newColor) {
         Color oldColor = this.color;
         this.color = newColor;
         for (SeriesChangeListener l : listeners) {
             l.seriesColorChanged(name, oldColor, newColor);
         }
+        return this;
     }
 
     public Color getColor() {
         return this.color;
     }
 
-    public void setVisible(boolean visible) {
+    public Series setVisible(boolean visible) {
         this.visible = visible;
         for (SeriesChangeListener l : listeners) {
             l.seriesVisibilityChanged(name, visible);
         }
+        return this;
     }
 
     public boolean getVisible() {
         return this.visible;
     }
 
-    public void setData(List<Double> newData) {
+    public Series setBolded(boolean bolded) {
+        this.bolded = bolded;
+        for (SeriesChangeListener l : listeners) {
+            l.seriesBoldnessChanged(name, bolded);
+        }
+        return this;
+    }
+
+    public boolean isBolded() {
+        return this.bolded;
+    }
+
+    public Series setData(List<Double> newData) {
         minValue = Double.POSITIVE_INFINITY;
         maxValue = Double.NEGATIVE_INFINITY;
         for (double val : newData) {
@@ -99,6 +116,7 @@ public class Series {
         for (SeriesChangeListener l : listeners) {
             l.seriesDataChanged(name);
         }
+        return this;
     }
 
     public List<Double> getData() {

@@ -7,11 +7,13 @@ package com.hankedan.jlogchart;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.hankedan.jlogchart.MiniMapScrollbar.MiniMapable;
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.MouseEvent;
@@ -37,6 +39,9 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
         MouseMotionListener, MouseWheelListener, Series.SeriesChangeListener,
         AdjustmentListener, MiniMapable {
     private final Logger logger = Logger.getLogger(JLogChart.class.getName());
+    
+    public static final int NORMAL_THICKNESS = 1;
+    public static final int BOLD_THICKNESS = 3;
 
     // Set to true if the mouse is hovering over the chart
     private boolean mouseFocused = false;
@@ -510,7 +515,13 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
             return;
         }
         
-        g.setColor(series.getColor());
+        Graphics2D g2 = (Graphics2D)g;
+        g2.setColor(series.getColor());
+        if (series.isBolded()) {
+            g2.setStroke(new BasicStroke(BOLD_THICKNESS));
+        } else {
+            g2.setStroke(new BasicStroke(NORMAL_THICKNESS));
+        }
 
         // Compute x-axis scaling factor
         double pxPerSamp = getPxPerSample(brm);
@@ -855,7 +866,7 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
                     cosData.add(Math.cos(i * radPerSamp) * 2.0);
                     negSinData.add(Math.sin(i * radPerSamp) - 2.0);
                 }
-                jlc.addSeries("sin", sinData);
+                jlc.addSeries("sin", sinData).setBolded(true);
                 jlc.addSeries("cos", cosData);
                 jlc.addSeries("sin - 2", negSinData);
                 
@@ -875,6 +886,11 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     public void seriesVisibilityChanged(String seriesName, boolean visible) {
         repaint();
         updateMiniMapImage();
+    }
+
+    @Override
+    public void seriesBoldnessChanged(String seriesName, boolean bold) {
+        repaint();
     }
 
     @Override
