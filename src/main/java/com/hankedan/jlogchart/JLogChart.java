@@ -6,11 +6,13 @@
 package com.hankedan.jlogchart;
 
 import com.formdev.flatlaf.FlatDarkLaf;
+import com.hankedan.jlogchart.MiniMapScrollbar.MiniMapable;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.Image;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.MouseEvent;
@@ -19,6 +21,7 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -33,7 +36,7 @@ import javax.swing.JFrame;
  */
 public class JLogChart extends javax.swing.JPanel implements MouseListener,
         MouseMotionListener, MouseWheelListener, Series.SeriesChangeListener,
-        AdjustmentListener {
+        AdjustmentListener, MiniMapable {
     private final Logger logger = Logger.getLogger(JLogChart.class.getName());
 
     // Set to true if the mouse is hovering over the chart
@@ -134,8 +137,14 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
         addMouseMotionListener(this);
         addMouseWheelListener(this);
         
+        scrollbarPanel.setBackground(new Color(0,0,0,0));
         scrollbar.setModel(sampRange);
         scrollbar.addAdjustmentListener(this);
+        scrollbar.setVisible(false);
+        miniMapScrollbar.setModel(sampRange);
+        miniMapScrollbar.addAdjustmentListener(this);
+        miniMapScrollbar.setMiniMapable(this);
+        miniMapScrollbar.setVisible(true);
     }
 
     public void setSampleRate(double rateHz) {
@@ -189,6 +198,14 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     
     public boolean isScrollbarVisible() {
         return scrollbar.isVisible();
+    }
+    
+    public void setMiniMapVisible(boolean visible) {
+        miniMapScrollbar.setVisible(visible);
+    }
+    
+    public boolean isMiniMapVisible() {
+        return miniMapScrollbar.isVisible();
     }
 
     public boolean hasSeries(String name) {
@@ -264,15 +281,27 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     }
     
     private int leftViewedSamp() {
-        return sampRange.getValue();
+        return leftViewedSamp(sampRange);
+    }
+    
+    private int leftViewedSamp(BoundedRangeModel brm) {
+        return brm.getValue();
     }
     
     private int rightViewedSamp() {
-        return sampRange.getValue() + sampRange.getExtent();
+        return rightViewedSamp(sampRange);
+    }
+    
+    private int rightViewedSamp(BoundedRangeModel brm) {
+        return brm.getValue() + brm.getExtent();
     }
     
     private int visibleSamps() {
-        return sampRange.getExtent();
+        return visibleSamps(sampRange);
+    }
+    
+    private int visibleSamps(BoundedRangeModel brm) {
+        return brm.getExtent();
     }
 
     public void setViewBounds(int leftIdx, int rightIdx) {
@@ -429,7 +458,11 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     }
 
     private double getPxPerSample() {
-        int viewableSamps = visibleSamps();
+        return getPxPerSample(sampRange);
+    }
+    
+    private double getPxPerSample(BoundedRangeModel brm) {
+        int viewableSamps = visibleSamps(brm);
         if (viewableSamps > 0) {
             return (double)getWidth() / viewableSamps;
         } else {
@@ -454,7 +487,7 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
         g.drawLine(x2, 0, x2, getHeight());
     }
 
-    private void drawSeries(Graphics g, Series series) {
+    private void drawSeries(Graphics g, Series series, BoundedRangeModel brm) {
         if (series.getData() == null) {
             return;
         }
@@ -462,7 +495,7 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
         g.setColor(series.getColor());
 
         // Compute x-axis scaling factor
-        double pxPerSamp = getPxPerSample();
+        double pxPerSamp = getPxPerSample(brm);
         
         // Compute y-axis scaling factor
         double minY = series.minValue();
@@ -481,7 +514,7 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
          * horizontal chart pixels is less than the total number of 
          * visible samples.
          */
-        int visibleSamps = visibleSamps();
+        int visibleSamps = visibleSamps(brm);
         double sampStride = 1.0;
         if (sampleDecimationEnabled && visibleSamps > getWidth()) {
             sampStride = visibleSamps / getWidth();
@@ -492,9 +525,11 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
 
         int prevX = -1;
         int prevY = -1;
-        double i = leftViewedSamp();
-        while (i<=rightViewedSamp() && i<series.getData().size()) {
-            int currX = (int)((i - leftViewedSamp()) * pxPerSamp);
+        int leftViewedSamp = leftViewedSamp(brm);
+        int rightViewedSamp = rightViewedSamp(brm);
+        double i = leftViewedSamp;
+        while (i<=rightViewedSamp && i<series.getData().size()) {
+            int currX = (int)((i - leftViewedSamp) * pxPerSamp);
             int currY = getHeight() - (int)((series.getData().get((int)i) - minY) * pxPerVal);
 
             if (prevX >= 0 && prevY >= 0) {
@@ -508,10 +543,10 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
         }
     }
 
-    private void drawVisibleSeries(Graphics g) {
+    private void drawVisibleSeries(Graphics g, BoundedRangeModel brm) {
         for (Series series : allSeries) {
             if (series.getVisible()) {
-                drawSeries(g, series);
+                drawSeries(g, series, brm);
             }
         }
     }
@@ -657,7 +692,7 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        drawVisibleSeries(g);
+        drawVisibleSeries(g, sampRange);
         
         switch (dragState) {
             case DRAG_STATE_IDLE:
@@ -850,6 +885,25 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
          */
         setViewBounds(newLeftViewSamp, newRightViewSamp, true);
     }
+    
+    @Override
+    public Image getMiniMapImage() {
+        /**
+         * TODO I can improve performance by only drawing this image once when
+         * the series data changes or visibility is modified.
+         */
+        BoundedRangeModel fullView = new DefaultBoundedRangeModel();
+        fullView.setMinimum(sampRange.getMinimum());
+        fullView.setMaximum(sampRange.getMaximum());
+        fullView.setExtent(sampRange.getMaximum());
+        
+        // Paint an image for the full chart series
+        BufferedImage mmImg = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics g = mmImg.getGraphics();
+        drawVisibleSeries(g, fullView);
+        
+        return mmImg;
+    }
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -860,16 +914,27 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        scrollbarPanel = new javax.swing.JPanel();
+        miniMapScrollbar = new com.hankedan.jlogchart.MiniMapScrollbar();
         scrollbar = new javax.swing.JScrollBar();
 
         setLayout(new java.awt.BorderLayout());
 
+        scrollbarPanel.setLayout(new java.awt.BorderLayout());
+
+        miniMapScrollbar.setOrientation(javax.swing.JScrollBar.HORIZONTAL);
+        scrollbarPanel.add(miniMapScrollbar, java.awt.BorderLayout.CENTER);
+
         scrollbar.setOrientation(javax.swing.JScrollBar.HORIZONTAL);
-        add(scrollbar, java.awt.BorderLayout.SOUTH);
+        scrollbarPanel.add(scrollbar, java.awt.BorderLayout.SOUTH);
+
+        add(scrollbarPanel, java.awt.BorderLayout.SOUTH);
     }// </editor-fold>//GEN-END:initComponents
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private com.hankedan.jlogchart.MiniMapScrollbar miniMapScrollbar;
     private javax.swing.JScrollBar scrollbar;
+    private javax.swing.JPanel scrollbarPanel;
     // End of variables declaration//GEN-END:variables
 }
