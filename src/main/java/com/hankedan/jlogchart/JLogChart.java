@@ -399,7 +399,9 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
             }
         }
 
-        setViewBounds(newLeftViewedSamp, newRightViewedSamp);
+        if (newLeftViewedSamp < newRightViewedSamp) {
+            setViewBounds(newLeftViewedSamp, newRightViewedSamp);
+        }
     }
 
     /**
@@ -438,7 +440,9 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
         }
 
         // Update view bounds and redraw chart
-        setViewBounds(newLeftViewedSamp, newRightViewedSamp);
+        if (newLeftViewedSamp < newRightViewedSamp) {
+            setViewBounds(newLeftViewedSamp, newRightViewedSamp);
+        }
     }
 
     /**
@@ -883,7 +887,9 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
          * The updateFromScollEvent is set to true during view bounds update
          * because it would induce a recursive event chain.
          */
-        setViewBounds(newLeftViewSamp, newRightViewSamp, true);
+        if (newLeftViewSamp < newRightViewSamp) {
+            setViewBounds(newLeftViewSamp, newRightViewSamp, true);
+        }
     }
     
     @Override
