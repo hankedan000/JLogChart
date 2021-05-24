@@ -24,6 +24,7 @@ import java.awt.event.MouseWheelListener;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -369,6 +370,14 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
 
         // No need to set repaintRequired, setViewBounds() repaints
         setViewBounds(newLeftViewedSamp, newRightViewedSamp);
+    }
+    
+    /**
+     * @return
+     * An immutable list of all the Series that are added to the chart
+     */
+    public List<Series> getAllSeries() {
+        return Collections.unmodifiableList(allSeries);
     }
     
     public Series getSeriesByName(String name) {
