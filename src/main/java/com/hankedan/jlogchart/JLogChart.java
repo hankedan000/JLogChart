@@ -16,11 +16,6 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
-import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -36,57 +31,16 @@ import javax.swing.JFrame;
  *
  * @author daniel
  */
-public class JLogChart extends javax.swing.JPanel implements MouseListener,
-        MouseMotionListener, MouseWheelListener, Series.SeriesChangeListener,
-        AdjustmentListener, MiniMapable {
+public class JLogChart extends javax.swing.JPanel implements 
+        Series.SeriesChangeListener, AdjustmentListener, MiniMapable {
     private final Logger logger = Logger.getLogger(JLogChart.class.getName());
     
     public static final int NORMAL_THICKNESS = 1;
     public static final int BOLD_THICKNESS = 3;
 
-    // Set to true if the mouse is hovering over the chart
-    private boolean mouseFocused = false;
-
-    // Current mouse position relative to chart's graphics origin
-    private int mouseX = 0;
-    private int mouseY = 0;
-
     // The user can select and place a vertical bar on a sample
     private boolean showSelectedSample = false;
     private int selectedSampleIdx = 0;
-
-    /**
-     * IDLE
-     * No drag rectangle is drawn to the chart.
-     * This state is the default state when the LogChart is constructed.
-     * This state can be entered when the user single clicks on a point in
-     * the chart.
-     */
-    private static final int DRAG_STATE_IDLE = 0;
-    /**
-     * PRESSED
-     * No drag rectangle is drawn to the chart.
-     * This state is only transitioned to temporarily. It's entered from
-     * IDLE state when the mouseClicked() event occurs.
-     */
-    private static final int DRAG_STATE_PRESSED = 1;
-    /**
-     * DRAGGING
-     * Drag rectangle is drawn to the chart.
-     * This state is entered from the PRESSED state when the mouseDragged()
-     * event occurs.
-     */
-    private static final int DRAG_STATE_DRAGGING = 2;
-    /**
-     * COMPLETE
-     * Drag rectangle is drawn to the chart.
-     * This state is entered from the DRAGGING state when the mouseReleased()
-     * event occurs.
-     */
-    private static final int DRAG_STATE_COMPLETE = 3;
-    private int dragState = DRAG_STATE_IDLE;
-    private int selectionSamp1 = 0;
-    private int selectionSamp2 = 0;
 
     // Delta time in seconds between time samples
     private double dt = 0.0;
@@ -107,21 +61,10 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     private double maxValueY = Double.NEGATIVE_INFINITY;
     private double minValueY = Double.POSITIVE_INFINITY;
     
-    // If enabled, when the user clicks near edge, the chart will pan
-    private boolean clickToPanEnabled = true;
-    
     // Set to true during view bounds update to supress a cyclical scroll event
     private boolean ignoreNextScrollEvent = false;
     
-    /**
-     * Model used to manage the scroll bar and chart's visible samples.
-     * 
-     * value   -> left most visible sample
-     * extent  -> visible range of samples indices displayed in chart currently
-     * minimum -> always zero
-     * maximum -> the maximum number of samples across all series
-     */
-    private final BoundedRangeModel sampRange = new DefaultBoundedRangeModel();
+    private final BoundedRangeModel xRange;
 
     private final Color[] SERIES_COLOR_PALETTE = {
         Color.RED,
@@ -141,15 +84,13 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     public JLogChart() {
         initComponents();
         
-        addMouseListener(this);
-        addMouseMotionListener(this);
-        addMouseWheelListener(this);
+        xRange = view.getX_RangeModel();
         
         scrollbarPanel.setBackground(new Color(0,0,0,0));
-        scrollbar.setModel(sampRange);
+        scrollbar.setModel(xRange);
         scrollbar.addAdjustmentListener(this);
         scrollbar.setVisible(false);
-        miniMapScrollbar.setModel(sampRange);
+        miniMapScrollbar.setModel(xRange);
         miniMapScrollbar.addAdjustmentListener(this);
         miniMapScrollbar.setMiniMapable(this);
         miniMapScrollbar.setVisible(true);
@@ -183,21 +124,6 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     
     public boolean getSingleY_Scale() {
         return singleY_ScaleEnabled;
-    }
-    
-    /**
-     * If enabled, when the user clicks near the edges of the chart, the visible
-     * section will automatically pan to the clicking location.
-     * 
-     * @param enabled 
-     * True if the feature is enabled
-     */
-    public void setClickToPan(boolean enabled) {
-        clickToPanEnabled = enabled;
-    }
-    
-    public boolean getClickToPan() {
-        return clickToPanEnabled;
     }
     
     public void setScrollbarVisible(boolean visible) {
@@ -252,14 +178,14 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
             int newLeftViewedSamp = 0;
             int newRightViewedSamp = chartSamps - 1;
             if (allSeries.size() > 1) {
-                newLeftViewedSamp = Integer.max(leftViewedSamp(), newLeftViewedSamp);
-                newRightViewedSamp = Integer.min(rightViewedSamp(), newRightViewedSamp);
+                newLeftViewedSamp = Integer.max(view.leftViewedSamp(), newLeftViewedSamp);
+                newRightViewedSamp = Integer.min(view.rightViewedSamp(), newRightViewedSamp);
             }
-            setViewBounds(newLeftViewedSamp, newRightViewedSamp);
+            view.setViewBounds(newLeftViewedSamp, newRightViewedSamp);
             series.addSeriesListener(this);
             logger.log(Level.FINE,
                     "leftViewedSamp = {0}; rightViewedSamp = {1};",
-                    new Object[]{leftViewedSamp(),rightViewedSamp()});
+                    new Object[]{view.leftViewedSamp(),view.rightViewedSamp()});
             repaint();
         }
         
@@ -288,90 +214,6 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
         updateAfterDataChange();
     }
     
-    private int leftViewedSamp() {
-        return leftViewedSamp(sampRange);
-    }
-    
-    private int leftViewedSamp(BoundedRangeModel brm) {
-        return brm.getValue();
-    }
-    
-    private int rightViewedSamp() {
-        return rightViewedSamp(sampRange);
-    }
-    
-    private int rightViewedSamp(BoundedRangeModel brm) {
-        return brm.getValue() + brm.getExtent();
-    }
-    
-    private int visibleSamps() {
-        return visibleSamps(sampRange);
-    }
-    
-    private int visibleSamps(BoundedRangeModel brm) {
-        return brm.getExtent();
-    }
-
-    public void setViewBounds(int leftIdx, int rightIdx) {
-        setViewBounds(leftIdx, rightIdx, false);
-    }
-    
-    private void setViewBounds(int leftIdx, int rightIdx, boolean updateFromScrollEvent) {
-        if (leftIdx >= rightIdx) {
-            logger.log(Level.WARNING,
-                    "View bounds are invalid. leftIdx must be < rightIdx." + 
-                    " leftIdx = {0}; rightIdx = {1}",
-                    new Object[]{leftIdx,rightIdx});
-            return;
-        }
-
-        // Update the bounds accordingly
-        int newLeftViewedSamp = leftIdx;
-        if (leftIdx < 0) {
-            newLeftViewedSamp = 0;
-        }
-        int newRightViewedSamp = rightIdx;
-        if (rightIdx > chartSamps) {
-            newRightViewedSamp = chartSamps;
-        }
-        
-        int visibleSamps = newRightViewedSamp - newLeftViewedSamp;
-        ignoreNextScrollEvent = updateFromScrollEvent;
-        sampRange.setMinimum(0);
-        sampRange.setMaximum(chartSamps);
-        sampRange.setExtent(visibleSamps);
-        sampRange.setValue(newLeftViewedSamp);
-
-        // Redraw chart with new bounds
-        repaint();
-    }
-    
-    /**
-     * Pan the chart's view left/right
-     * 
-     * @param xPixels 
-     * Number of pixels to pan the view by. Positive numbers will shift the
-     * view to the right.
-     */
-    public void panPixels(int xPixels) {
-        int visibleSamps = visibleSamps() + 1;
-        int panSamps = (int)(xPixels / getPxPerSample());
-        int newLeftViewedSamp = leftViewedSamp() + panSamps;
-        int newRightViewedSamp = rightViewedSamp() + panSamps;
-
-        // Make sure new window doesn't step outside sample range
-        if (newRightViewedSamp >= chartSamps) {
-            newRightViewedSamp = chartSamps - 1;
-            newLeftViewedSamp = newRightViewedSamp - visibleSamps;
-        } else if (newLeftViewedSamp < 0) {
-            newLeftViewedSamp = 0;
-            newRightViewedSamp = visibleSamps;
-        }
-
-        // No need to set repaintRequired, setViewBounds() repaints
-        setViewBounds(newLeftViewedSamp, newRightViewedSamp);
-    }
-    
     /**
      * @return
      * An immutable list of all the Series that are added to the chart
@@ -391,9 +233,9 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     
     private void updateMiniMapImage() {
         BoundedRangeModel fullView = new DefaultBoundedRangeModel();
-        fullView.setMinimum(sampRange.getMinimum());
-        fullView.setMaximum(sampRange.getMaximum());
-        fullView.setExtent(sampRange.getMaximum());
+        fullView.setMinimum(xRange.getMinimum());
+        fullView.setMaximum(xRange.getMaximum());
+        fullView.setExtent(xRange.getMaximum());
         
         // Paint an image for the full chart series
         miniMapImage = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
@@ -419,104 +261,34 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
         int newLeftViewedSamp = 0;
         int newRightViewedSamp = 0;
         if ( ! allSeries.isEmpty()) {
-            if (leftViewedSamp() >= chartSamps) {
+            if (view.leftViewedSamp() >= chartSamps) {
                 newLeftViewedSamp = 0;
             }
-            if (rightViewedSamp() >= chartSamps) {
+            if (view.rightViewedSamp() >= chartSamps) {
                 newRightViewedSamp = chartSamps;
             }
         }
 
         if (newLeftViewedSamp < newRightViewedSamp) {
-            setViewBounds(newLeftViewedSamp, newRightViewedSamp);
-        }
-    }
-
-    /**
-     * Zooms the visible portion of the chart and redraws
-     * @param zoomIn
-     * True if zooming in, false to zoom out
-     * @param center
-     * The x pixel location to center the zoom around
-     * @param amount 
-     * Amount to zoom by. Valid range is 0.0 to 1.0.
-     *   1.0 -> new visible portion is 0% of current visible portion
-     *   0.0 -> new visible portion is 100% of current visible portion
-     */
-    private void zoom(boolean zoomIn, int center, double amount) {
-        if (amount <= 0) {
-            amount = 0;
-        } else if (amount >= 1.0) {
-            amount = 1.0;
-        }
-
-        // We center the zooming around the mouse's x position
-        double leftZoomRatio = (double)(center) / getWidth();
-        double rightZoomRatio = 1.0 - leftZoomRatio;
-
-        double sampsZoomed = visibleSamps() * amount;
-        int newLeftViewedSamp = leftViewedSamp();
-        int newRightViewedSamp = rightViewedSamp();
-        if (zoomIn) {
-            // zoom in
-            newLeftViewedSamp += sampsZoomed * leftZoomRatio;
-            newRightViewedSamp -= sampsZoomed * rightZoomRatio;
-        } else {
-            // zoom out
-            newLeftViewedSamp -= sampsZoomed * leftZoomRatio;
-            newRightViewedSamp += sampsZoomed * rightZoomRatio;
-        }
-
-        // Update view bounds and redraw chart
-        if (newLeftViewedSamp < newRightViewedSamp) {
-            setViewBounds(newLeftViewedSamp, newRightViewedSamp);
-        }
-    }
-
-    /**
-     * Gets the nearest sample index to the x pixel position on the chart.
-     * @param xPos
-     * Pixel position on the chart
-     * @return 
-     * The nearest time sample index
-     */
-    private int getNearestSampleIdx(int xPos) {
-        double pxPerSamp = getPxPerSample();
-        if (pxPerSamp > 0) {
-            return leftViewedSamp() + (int)Math.round(xPos / pxPerSamp);
-        } else {
-            return leftViewedSamp();
-        }
-    }
-
-    private double getPxPerSample() {
-        return getPxPerSample(sampRange);
-    }
-    
-    private double getPxPerSample(BoundedRangeModel brm) {
-        int viewableSamps = visibleSamps(brm);
-        if (viewableSamps > 0) {
-            return (double)getWidth() / viewableSamps;
-        } else {
-            return 0;
+            view.setViewBounds(newLeftViewedSamp, newRightViewedSamp);
         }
     }
 
     private void drawSelection(Graphics g) {
-        double pxPerSamp = getPxPerSample();
-        int offset1 = selectionSamp1 - leftViewedSamp();
-        int offset2 = selectionSamp2 - leftViewedSamp();
-        int x1 = (int)(offset1 * pxPerSamp);
-        int x2 = (int)(offset2 * pxPerSamp);
-        int width = Math.abs(x2 - x1);
-        int leftX = Integer.min(x1, x2);
-        g.setColor(new Color(200, 200, 200, 50));
-        g.fillRect(leftX, 0, width, getHeight());
-        
-        // Draw end lines
-        g.setColor(Color.LIGHT_GRAY);
-        g.drawLine(x1, 0, x1, getHeight());
-        g.drawLine(x2, 0, x2, getHeight());
+//        double pxPerSamp = getPxPerSample();
+//        int offset1 = selectionSamp1 - leftViewedSamp();
+//        int offset2 = selectionSamp2 - leftViewedSamp();
+//        int x1 = (int)(offset1 * pxPerSamp);
+//        int x2 = (int)(offset2 * pxPerSamp);
+//        int width = Math.abs(x2 - x1);
+//        int leftX = Integer.min(x1, x2);
+//        g.setColor(new Color(200, 200, 200, 50));
+//        g.fillRect(leftX, 0, width, getHeight());
+//        
+//        // Draw end lines
+//        g.setColor(Color.LIGHT_GRAY);
+//        g.drawLine(x1, 0, x1, getHeight());
+//        g.drawLine(x2, 0, x2, getHeight());
     }
 
     private void drawSeries(Graphics g, Series series, BoundedRangeModel brm) {
@@ -533,7 +305,7 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
         }
 
         // Compute x-axis scaling factor
-        double pxPerSamp = getPxPerSample(brm);
+        double pxPerSamp = view.getPxPerSample(brm);
         
         // Compute y-axis scaling factor
         double minY = series.minValue();
@@ -552,7 +324,7 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
          * horizontal chart pixels is less than the total number of 
          * visible samples.
          */
-        int visibleSamps = visibleSamps(brm);
+        int visibleSamps = view.visibleSamps(brm);
         double sampStride = 1.0;
         if (sampleDecimationEnabled && visibleSamps > getWidth()) {
             sampStride = visibleSamps / getWidth();
@@ -563,8 +335,8 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
 
         int prevX = -1;
         int prevY = -1;
-        int leftViewedSamp = leftViewedSamp(brm);
-        int rightViewedSamp = rightViewedSamp(brm);
+        int leftViewedSamp = view.leftViewedSamp(brm);
+        int rightViewedSamp = view.rightViewedSamp(brm);
         double i = leftViewedSamp;
         while (i<=rightViewedSamp && i<series.getData().size()) {
             int currX = (int)((i - leftViewedSamp) * pxPerSamp);
@@ -590,15 +362,15 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     }
 
     private void drawSelectedSample(Graphics g) {
-        if (selectedSampleIdx < leftViewedSamp()) {
+        if (selectedSampleIdx < view.leftViewedSamp()) {
             return;
-        } else if (selectedSampleIdx > rightViewedSamp()) {
+        } else if (selectedSampleIdx > view.rightViewedSamp()) {
             return;
         }
 
         g.setColor(Color.CYAN);
-        int sampOffset = selectedSampleIdx - leftViewedSamp();
-        int sampX = (int)(sampOffset * getPxPerSample());
+        int sampOffset = selectedSampleIdx - view.leftViewedSamp();
+        int sampX = (int)(sampOffset * view.getPxPerSample());
         g.drawLine(sampX, 0, sampX, getHeight());
     }
 
@@ -709,142 +481,47 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     }
     
     private void drawSelectionOverlay(Graphics g) {
-        int CHART_MARGIN = 3;// margin around chart to keep out of
-        int TEXT_SEPERATION = 0;// px between text
-        Color BG_COLOR = new Color(0, 0, 0, 50);
-        
-        FontMetrics fm = g.getFontMetrics();
-        int textHeight = fm.getHeight();
-        int yOffset = CHART_MARGIN + textHeight;
-        
-        LabelGroup group = new LabelGroup();
-        int deltaSamps = selectionSamp2 - selectionSamp1;
-        double deltaTime = deltaSamps * dt;
-        String dtText = String.format("delta time = %.3fs", deltaTime);
-        group.addLabel(new Label(dtText, Color.LIGHT_GRAY, getWidth() - 150, yOffset));
-        
-        group.draw(g, BG_COLOR);
+//        int CHART_MARGIN = 3;// margin around chart to keep out of
+//        int TEXT_SEPERATION = 0;// px between text
+//        Color BG_COLOR = new Color(0, 0, 0, 50);
+//        
+//        FontMetrics fm = g.getFontMetrics();
+//        int textHeight = fm.getHeight();
+//        int yOffset = CHART_MARGIN + textHeight;
+//        
+//        LabelGroup group = new LabelGroup();
+//        int deltaSamps = selectionSamp2 - selectionSamp1;
+//        double deltaTime = deltaSamps * dt;
+//        String dtText = String.format("delta time = %.3fs", deltaTime);
+//        group.addLabel(new Label(dtText, Color.LIGHT_GRAY, getWidth() - 150, yOffset));
+//        
+//        group.draw(g, BG_COLOR);
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        drawVisibleSeries(g, sampRange);
-        
-        switch (dragState) {
-            case DRAG_STATE_IDLE:
-            case DRAG_STATE_PRESSED:
-                break;
-            case DRAG_STATE_DRAGGING:
-            case DRAG_STATE_COMPLETE:
-                drawSelection(g);
-                drawSelectionOverlay(g);
-                break;
-            default:
-                break;
-        }
-        
-        drawMinMaxOverlay(g);
-
+        // Draw the chart view
+        drawVisibleSeries(g, xRange);
         if (showSelectedSample) {
             drawSelectedSample(g);
         }
-    }
-
-    @Override
-    public void mouseClicked(MouseEvent e) {
-        boolean repaintRequired = false;
         
-        if (e.getButton() == MouseEvent.BUTTON1) {// Left click
-            // See if selection is new, if so update and redraw
-            int newSelectedSampleIdx = getNearestSampleIdx(e.getX());
-            boolean isNewSelection = newSelectedSampleIdx != selectedSampleIdx;
-            if ( ! showSelectedSample || isNewSelection) {
-                selectedSampleIdx = getNearestSampleIdx(e.getX());
-                showSelectedSample = true;
-                dragState = DRAG_STATE_IDLE;
-                repaintRequired = true;
-            }
-            
-            // Click panning centers the visible area around the click location
-            if (clickToPanEnabled) {
-                double CLICK_PAN_MARGIN = 0.1;
-                int marginPx = (int)(getWidth() * CLICK_PAN_MARGIN);
-                
-                boolean withinPanMargin = false;
-                withinPanMargin = withinPanMargin || e.getX() < marginPx;
-                withinPanMargin = withinPanMargin || (getWidth() - e.getX()) < marginPx;
-                
-                // Recenter visible section around clicked location
-                if (withinPanMargin) {
-                    int panDistance = e.getX() - getWidth() / 2;
-                    panPixels(panDistance);
-                }
-            }
-        } else if (e.getButton() == MouseEvent.BUTTON3) {// Right click
-            // Clear selection and drag on a right click
-            showSelectedSample = false;
-            dragState = DRAG_STATE_IDLE;
-            repaintRequired = true;
-        }
-        
-        // Repaint the chart if an update is required
-        if (repaintRequired) {
-            repaint();
-        }
-    }
-
-    @Override
-    public void mousePressed(MouseEvent e) {
-        if (dragState == DRAG_STATE_IDLE || dragState == DRAG_STATE_COMPLETE) {
-            selectionSamp1 = getNearestSampleIdx(e.getX());
-            dragState = DRAG_STATE_PRESSED;
-        }
-        repaint();
-    }
-
-    @Override
-    public void mouseReleased(MouseEvent e) {
-        if (dragState == DRAG_STATE_DRAGGING) {
-            selectionSamp2 = getNearestSampleIdx(e.getX());
-            dragState = DRAG_STATE_COMPLETE;
-        }
-        repaint();
-    }
-
-    @Override
-    public void mouseEntered(MouseEvent e) {
-        mouseFocused = true;
-        repaint();
-    }
-
-    @Override
-    public void mouseExited(MouseEvent e) {
-        mouseFocused = false;
-        repaint();
-    }
-
-    @Override
-    public void mouseDragged(MouseEvent e) {
-        if (dragState == DRAG_STATE_PRESSED) {
-            dragState = DRAG_STATE_DRAGGING;
-        }
-        selectionSamp2 = getNearestSampleIdx(e.getX());
-        mouseX = e.getX();
-        mouseY = e.getY();
-        repaint();
-    }
-
-    @Override
-    public void mouseMoved(MouseEvent e) {
-        mouseX = e.getX();
-        mouseY = e.getY();
-    }
-
-    @Override
-    public void mouseWheelMoved(MouseWheelEvent e) {
-        zoom(e.getWheelRotation() < 0, e.getX(), 0.2);
+        // Draw chart overlays
+//        switch (dragState) {
+//            case DRAG_STATE_IDLE:
+//            case DRAG_STATE_PRESSED:
+//                break;
+//            case DRAG_STATE_DRAGGING:
+//            case DRAG_STATE_COMPLETE:
+//                drawSelection(chartGraphics);
+//                drawSelectionOverlay(chartGraphics);
+//                break;
+//            default:
+//                break;
+//        }
+        drawMinMaxOverlay(g);
     }
     
     public static void main(String[] args) {
@@ -924,13 +601,13 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
         }
         
         int newLeftViewSamp = e.getValue();
-        int newRightViewSamp = newLeftViewSamp + visibleSamps();
+        int newRightViewSamp = newLeftViewSamp + view.visibleSamps();
         /**
          * The updateFromScollEvent is set to true during view bounds update
          * because it would induce a recursive event chain.
          */
         if (newLeftViewSamp < newRightViewSamp) {
-            setViewBounds(newLeftViewSamp, newRightViewSamp, true);
+            view.setViewBounds(newLeftViewSamp, newRightViewSamp, true);
         }
     }
     
@@ -951,11 +628,13 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        view = new com.hankedan.jlogchart.ChartView();
         scrollbarPanel = new javax.swing.JPanel();
         miniMapScrollbar = new com.hankedan.jlogchart.MiniMapScrollbar();
         scrollbar = new javax.swing.JScrollBar();
 
         setLayout(new java.awt.BorderLayout());
+        add(view, java.awt.BorderLayout.CENTER);
 
         scrollbarPanel.setLayout(new java.awt.BorderLayout());
 
@@ -973,5 +652,6 @@ public class JLogChart extends javax.swing.JPanel implements MouseListener,
     private com.hankedan.jlogchart.MiniMapScrollbar miniMapScrollbar;
     private javax.swing.JScrollBar scrollbar;
     private javax.swing.JPanel scrollbarPanel;
+    private com.hankedan.jlogchart.ChartView view;
     // End of variables declaration//GEN-END:variables
 }
