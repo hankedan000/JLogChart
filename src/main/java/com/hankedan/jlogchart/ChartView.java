@@ -5,6 +5,8 @@
  */
 package com.hankedan.jlogchart;
 
+import java.awt.event.AdjustmentEvent;
+import java.awt.event.AdjustmentListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -23,7 +25,7 @@ import javax.swing.JPanel;
  * @author daniel
  */
 public class ChartView extends JPanel implements MouseWheelListener,
-        MouseListener, MouseMotionListener {
+        MouseListener, MouseMotionListener, AdjustmentListener {
     private final Logger logger = Logger.getLogger(ChartView.class.getName());
 
     /**
@@ -137,10 +139,6 @@ public class ChartView extends JPanel implements MouseWheelListener,
     }
 
     public void setViewBounds(int leftIdx, int rightIdx) {
-        setViewBounds(leftIdx, rightIdx, false);
-    }
-    
-    protected void setViewBounds(int leftIdx, int rightIdx, boolean updateFromScrollEvent) {
         if (leftIdx >= rightIdx) {
             logger.log(Level.WARNING,
                     "View bounds are invalid. leftIdx must be < rightIdx." + 
@@ -375,6 +373,15 @@ public class ChartView extends JPanel implements MouseWheelListener,
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
         zoom(e.getWheelRotation() < 0, e.getX(), 0.2);
+    }
+
+    @Override
+    public void adjustmentValueChanged(AdjustmentEvent e) {
+        int newLeftViewSamp = e.getValue();
+        int newRightViewSamp = newLeftViewSamp + visibleSamps();
+        if (newLeftViewSamp < newRightViewSamp) {
+            setViewBounds(newLeftViewSamp, newRightViewSamp);
+        }
     }
     
 }

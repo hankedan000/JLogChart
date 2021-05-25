@@ -14,8 +14,6 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.event.AdjustmentEvent;
-import java.awt.event.AdjustmentListener;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -33,7 +31,7 @@ import javax.swing.JFrame;
  * @author daniel
  */
 public class JLogChart extends javax.swing.JPanel implements 
-        Series.SeriesChangeListener, AdjustmentListener {
+        Series.SeriesChangeListener {
     private final Logger logger = Logger.getLogger(JLogChart.class.getName());
     
     public static final int NORMAL_THICKNESS = 1;
@@ -60,9 +58,6 @@ public class JLogChart extends javax.swing.JPanel implements
     private double maxValueY = Double.NEGATIVE_INFINITY;
     private double minValueY = Double.POSITIVE_INFINITY;
     
-    // Set to true during view bounds update to supress a cyclical scroll event
-    private boolean ignoreNextScrollEvent = false;
-    
     private final BoundedRangeModel xRange;
 
     private final Color[] SERIES_COLOR_PALETTE = {
@@ -85,10 +80,10 @@ public class JLogChart extends javax.swing.JPanel implements
         
         scrollbarPanel.setBackground(new Color(0,0,0,0));
         scrollbar.setModel(xRange);
-        scrollbar.addAdjustmentListener(this);
+        scrollbar.addAdjustmentListener(view);
         scrollbar.setVisible(false);
         miniMapScrollbar.setModel(xRange);
-        miniMapScrollbar.addAdjustmentListener(this);
+        miniMapScrollbar.addAdjustmentListener(view);
         miniMapScrollbar.setMiniMapable(view);
         miniMapScrollbar.setVisible(true);
     }
@@ -403,25 +398,6 @@ public class JLogChart extends javax.swing.JPanel implements
         // Recompute view bounds, y-scale, etc. then repaint the chart
         updateAfterDataChange();
         view.updateMiniMapImage();
-    }
-
-    @Override
-    public void adjustmentValueChanged(AdjustmentEvent e) {
-        // Avoid cyclical events if updating the view bounds programmatically
-        if (ignoreNextScrollEvent) {
-            ignoreNextScrollEvent = false;
-            return;
-        }
-        
-        int newLeftViewSamp = e.getValue();
-        int newRightViewSamp = newLeftViewSamp + view.visibleSamps();
-        /**
-         * The updateFromScollEvent is set to true during view bounds update
-         * because it would induce a recursive event chain.
-         */
-        if (newLeftViewSamp < newRightViewSamp) {
-            view.setViewBounds(newLeftViewSamp, newRightViewSamp, true);
-        }
     }
 
     private class JLogChartView extends ChartView implements ChartViewListener,
