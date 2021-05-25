@@ -12,10 +12,10 @@ import java.awt.event.MouseEvent;
  * @author daniel
  */
 public interface ChartViewListener {
-    public void onSampleClicked(int sample, boolean isPanClick);
+    public void onSampleClicked(int absSample, boolean isPanClick);
     public void onLeftClicked(MouseEvent e);
     public void onRightClicked(MouseEvent e);
-    public void onDragStarted(int startSample);
-    public void onDragging(int startSample, int currSample);
-    public void onDragComplete(int startSample, int stopSample);
+    public void onDragStarted(int startAbsSample);
+    public void onDragging(int startAbsSample, int currAbsSample);
+    public void onDragComplete(int startAbsSample, int stopAbsSample);
 }

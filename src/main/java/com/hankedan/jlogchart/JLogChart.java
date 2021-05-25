@@ -42,9 +42,6 @@ public class JLogChart extends javax.swing.JPanel implements
     // Delta time in seconds between time samples
     private double dt = 0.0;
 
-    // The number of time samples in the record
-    private int chartSamps = 0;
-
     /**
      * If set to true, drawn samples will be decimated when the number of
      * visible samples is greater than the chart's width in pixels. This
@@ -166,15 +163,16 @@ public class JLogChart extends javax.swing.JPanel implements
             allSeries.add(series);
             minValueY = Double.min(minValueY, series.minValue());
             maxValueY = Double.max(maxValueY, series.maxValue());
-            chartSamps = Integer.max(chartSamps, data.size());
+            int newX_Min = Integer.min(xRange.getMinimum(), 0);
+            int newX_Max = Integer.max(xRange.getMaximum(), data.size());
             int newLeftViewedSamp = 0;
-            int newRightViewedSamp = chartSamps - 1;
+            int newRightViewedSamp = newX_Max - 1;
             if (allSeries.size() > 1) {
                 newLeftViewedSamp = Integer.max(view.leftViewedSamp(), newLeftViewedSamp);
                 newRightViewedSamp = Integer.min(view.rightViewedSamp(), newRightViewedSamp);
             }
-            view.setX_RangeMin(0);
-            view.setX_RangeMax(chartSamps);
+            view.setX_RangeMin(newX_Min);
+            view.setX_RangeMax(newX_Max);
             view.setViewBounds(newLeftViewedSamp, newRightViewedSamp);
             series.addSeriesListener(this);
             logger.log(Level.FINE,
@@ -226,11 +224,13 @@ public class JLogChart extends javax.swing.JPanel implements
     }
     
     private void updateAfterDataChange() {
-        chartSamps = 0;
+        int newMinX = Integer.MAX_VALUE;
+        int newMaxX = Integer.MIN_VALUE;
         double newMinValueY = Double.POSITIVE_INFINITY;
         double newMaxValueY = Double.NEGATIVE_INFINITY;
         for (Series series : allSeries) {
-            chartSamps = Integer.max(chartSamps, series.getData().size());
+            newMinX = Integer.min(newMinX, series.getOffset());
+            newMaxX = Integer.max(newMaxX, series.getOffset() + series.getData().size());
             newMinValueY = Double.min(newMinValueY, series.minValue());
             newMaxValueY = Double.max(newMaxValueY, series.maxValue());
         }
@@ -243,14 +243,20 @@ public class JLogChart extends javax.swing.JPanel implements
         int newLeftViewedSamp = 0;
         int newRightViewedSamp = 0;
         if ( ! allSeries.isEmpty()) {
-            if (view.leftViewedSamp() >= chartSamps) {
-                newLeftViewedSamp = 0;
+            if (view.leftViewedSamp() >= newMaxX) {
+                newLeftViewedSamp = newMinX;
+            } else if (view.leftViewedSamp() <= newMinX) {
+                newLeftViewedSamp = newMinX;
             }
-            if (view.rightViewedSamp() >= chartSamps) {
-                newRightViewedSamp = chartSamps;
+            if (view.rightViewedSamp() >= newMaxX) {
+                newRightViewedSamp = newMaxX;
+            } else if (view.rightViewedSamp() <= newMinX) {
+                newRightViewedSamp = newMaxX;
             }
         }
 
+        xRange.setMinimum(newMinX);
+        xRange.setMaximum(newMaxX);
         if (newLeftViewedSamp < newRightViewedSamp) {
             view.setViewBounds(newLeftViewedSamp, newRightViewedSamp);
         }
@@ -361,7 +367,7 @@ public class JLogChart extends javax.swing.JPanel implements
                     negSinData.add(Math.sin(i * radPerSamp) - 2.0);
                 }
                 jlc.addSeries("sin", sinData).setBolded(true);
-                jlc.addSeries("cos", cosData);
+                jlc.addSeries("cos", cosData).setOffset(500);
                 jlc.addSeries("sin - 2", negSinData);
                 
                 // Show the GUI
@@ -400,13 +406,24 @@ public class JLogChart extends javax.swing.JPanel implements
         view.updateMiniMapImage();
     }
 
+    @Override
+    public void seriesOffsetChanged(String seriesName, int oldOffset, int newOffset) {
+        logger.log(Level.INFO,
+                "Series ''{0}'' offset changed from {1} to {2}",
+                new Object[]{seriesName,oldOffset,newOffset});
+        // Recompute view bounds, scroll bounds, etc with new offset values
+        updateAfterDataChange();
+        repaint();
+        view.updateMiniMapImage();
+    }
+
     private class JLogChartView extends ChartView implements ChartViewListener,
             MiniMapable {
         // The user can select and place a vertical bar on a sample
-        private int selectedSample = -1;
+        private int selectedAbsSample = -1;
         
         private boolean selectionValid = false;
-        private int selectionSamp1, selectionSamp2;
+        private int selectionAbsSamp1, selectionAbsSamp2;
     
         // A "full view" image of all the series used for minimap scrollbar
         private BufferedImage miniMapImage = null;
@@ -417,8 +434,8 @@ public class JLogChart extends javax.swing.JPanel implements
         
         private void drawSelection(Graphics g) {
             double pxPerSamp = getPxPerSample();
-            int offset1 = selectionSamp1 - leftViewedSamp();
-            int offset2 = selectionSamp2 - leftViewedSamp();
+            int offset1 = selectionAbsSamp1 - leftViewedSamp();
+            int offset2 = selectionAbsSamp2 - leftViewedSamp();
             int x1 = (int)(offset1 * pxPerSamp);
             int x2 = (int)(offset2 * pxPerSamp);
             int width = Math.abs(x2 - x1);
@@ -478,19 +495,24 @@ public class JLogChart extends javax.swing.JPanel implements
             int prevY = -1;
             int leftViewedSamp = leftViewedSamp(brm);
             int rightViewedSamp = rightViewedSamp(brm);
-            double i = leftViewedSamp;
-            while (i<=rightViewedSamp && i<series.getData().size()) {
-                int currX = (int)((i - leftViewedSamp) * pxPerSamp);
-                int currY = getHeight() - (int)((series.getData().get((int)i) - minY) * pxPerVal);
+            double absIdx = leftViewedSamp;
+            int relIdx = series.getRelSampleIdx((int)absIdx);
+            while (absIdx<=rightViewedSamp && relIdx<series.getData().size()) {
+                // Don't draw anything below the Series's absolute range
+                if (relIdx >= 0) {
+                    int currX = (int)((absIdx - leftViewedSamp) * pxPerSamp);
+                    int currY = getHeight() - (int)((series.getData().get(relIdx) - minY) * pxPerVal);
 
-                if (prevX >= 0 && prevY >= 0) {
-                    g.drawLine(prevX, prevY, currX, currY);
+                    if (prevX >= 0 && prevY >= 0) {
+                        g.drawLine(prevX, prevY, currX, currY);
+                    }
+
+                    prevX = currX;
+                    prevY = currY;
                 }
 
-                prevX = currX;
-                prevY = currY;
-
-                i += sampStride;
+                absIdx += sampStride;
+                relIdx = series.getRelSampleIdx((int)absIdx);
             }
         }
 
@@ -503,13 +525,13 @@ public class JLogChart extends javax.swing.JPanel implements
         }
 
         private void drawSelectedSample(Graphics g) {
-            if (selectedSample < leftViewedSamp()) {
+            if (selectedAbsSample < leftViewedSamp()) {
                 return;
-            } else if (selectedSample > rightViewedSamp()) {
+            } else if (selectedAbsSample > rightViewedSamp()) {
                 return;
             }
 
-            int sampOffset = selectedSample - leftViewedSamp();
+            int sampOffset = selectedAbsSample - leftViewedSamp();
             int sampX = (int)(sampOffset * getPxPerSample());
             g.setColor(Color.CYAN);
             g.drawLine(sampX, 0, sampX, getHeight());
@@ -555,7 +577,7 @@ public class JLogChart extends javax.swing.JPanel implements
             int yOffset = CHART_MARGIN + textHeight;
             
             LabelGroup group = new LabelGroup();
-            int deltaSamps = selectionSamp2 - selectionSamp1;
+            int deltaSamps = selectionAbsSamp2 - selectionAbsSamp1;
             double deltaTime = deltaSamps * dt;
             String dtText = String.format("delta time = %.3fs", deltaTime);
             group.addLabel(new Label(dtText, Color.LIGHT_GRAY, getWidth() - 150, yOffset));
@@ -564,6 +586,12 @@ public class JLogChart extends javax.swing.JPanel implements
         }
         
         private void updateMiniMapImage() {
+            // We can't generate images if view has no width or height
+            if (getWidth() == 0 || getHeight() == 0) {
+                miniMapImage = null;
+                return;
+            }
+            
             BoundedRangeModel fullView = new DefaultBoundedRangeModel();
             fullView.setMinimum(xRange.getMinimum());
             fullView.setMaximum(xRange.getMaximum());
@@ -581,7 +609,7 @@ public class JLogChart extends javax.swing.JPanel implements
             
             // Draw the chart view
             drawVisibleSeries(g, xRange);
-            if (selectedSample != -1) {
+            if (selectedAbsSample != -1) {
                 drawSelectedSample(g);
             }
 
@@ -594,9 +622,9 @@ public class JLogChart extends javax.swing.JPanel implements
         }
 
         @Override
-        public void onSampleClicked(int sample, boolean isPanClick) {
+        public void onSampleClicked(int absSample, boolean isPanClick) {
             if ( ! isPanClick) {
-                selectedSample = sample;
+                selectedAbsSample = absSample;
                 repaint();
             }
         }
@@ -607,29 +635,29 @@ public class JLogChart extends javax.swing.JPanel implements
 
         @Override
         public void onRightClicked(MouseEvent e) {
-            selectedSample = -1;
+            selectedAbsSample = -1;
             selectionValid = false;
             repaint();
         }
 
         @Override
-        public void onDragStarted(int startSample) {
-            selectionSamp1 = startSample;
+        public void onDragStarted(int startAbsSample) {
+            selectionAbsSamp1 = startAbsSample;
             repaint();
         }
 
         @Override
-        public void onDragging(int startSample, int currSample) {
-            selectionSamp1 = startSample;
-            selectionSamp2 = currSample;
+        public void onDragging(int startAbsSample, int currAbsSample) {
+            selectionAbsSamp1 = startAbsSample;
+            selectionAbsSamp2 = currAbsSample;
             selectionValid = true;
             repaint();
         }
 
         @Override
-        public void onDragComplete(int startSample, int stopSample) {
-            selectionSamp1 = startSample;
-            selectionSamp2 = stopSample;
+        public void onDragComplete(int startAbsSample, int stopAbsSample) {
+            selectionAbsSamp1 = startAbsSample;
+            selectionAbsSamp2 = stopAbsSample;
             selectionValid = true;
             repaint();
         }
