@@ -33,7 +33,7 @@ import javax.swing.JFrame;
  * @author daniel
  */
 public class JLogChart extends javax.swing.JPanel implements 
-        Series.SeriesChangeListener, AdjustmentListener, MiniMapable {
+        Series.SeriesChangeListener, AdjustmentListener {
     private final Logger logger = Logger.getLogger(JLogChart.class.getName());
     
     public static final int NORMAL_THICKNESS = 1;
@@ -76,9 +76,6 @@ public class JLogChart extends javax.swing.JPanel implements
 
     // Map of all added chart series data vectors
     private final List<Series> allSeries = new ArrayList<>();
-    
-    // A "full view" image of all the series used for minimap scrollbar
-    private BufferedImage miniMapImage = null;
 
     public JLogChart() {
         initComponents();
@@ -92,7 +89,7 @@ public class JLogChart extends javax.swing.JPanel implements
         scrollbar.setVisible(false);
         miniMapScrollbar.setModel(xRange);
         miniMapScrollbar.addAdjustmentListener(this);
-        miniMapScrollbar.setMiniMapable(this);
+        miniMapScrollbar.setMiniMapable(view);
         miniMapScrollbar.setVisible(true);
     }
 
@@ -231,18 +228,6 @@ public class JLogChart extends javax.swing.JPanel implements
             }
         }
         return null;
-    }
-    
-    private void updateMiniMapImage() {
-        BoundedRangeModel fullView = new DefaultBoundedRangeModel();
-        fullView.setMinimum(xRange.getMinimum());
-        fullView.setMaximum(xRange.getMaximum());
-        fullView.setExtent(xRange.getMaximum());
-        
-        // Paint an image for the full chart series
-        miniMapImage = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics g = miniMapImage.getGraphics();
-        view.drawVisibleSeries(g, fullView);
     }
     
     private void updateAfterDataChange() {
@@ -399,7 +384,7 @@ public class JLogChart extends javax.swing.JPanel implements
     @Override
     public void seriesVisibilityChanged(String seriesName, boolean visible) {
         repaint();
-        updateMiniMapImage();
+        view.updateMiniMapImage();
     }
 
     @Override
@@ -410,14 +395,14 @@ public class JLogChart extends javax.swing.JPanel implements
     @Override
     public void seriesColorChanged(String seriesName, Color oldColor, Color newColor) {
         repaint();
-        updateMiniMapImage();
+        view.updateMiniMapImage();
     }
 
     @Override
     public void seriesDataChanged(String seriesName) {
         // Recompute view bounds, y-scale, etc. then repaint the chart
         updateAfterDataChange();
-        updateMiniMapImage();
+        view.updateMiniMapImage();
     }
 
     @Override
@@ -438,21 +423,17 @@ public class JLogChart extends javax.swing.JPanel implements
             view.setViewBounds(newLeftViewSamp, newRightViewSamp, true);
         }
     }
-    
-    @Override
-    public BufferedImage getMiniMapImage() {
-        if (miniMapImage == null) {
-            updateMiniMapImage();
-        }
-        return miniMapImage;
-    }
 
-    private class JLogChartView extends ChartView implements ChartViewListener {
+    private class JLogChartView extends ChartView implements ChartViewListener,
+            MiniMapable {
         // The user can select and place a vertical bar on a sample
         private int selectedSample = -1;
         
         private boolean selectionValid = false;
         private int selectionSamp1, selectionSamp2;
+    
+        // A "full view" image of all the series used for minimap scrollbar
+        private BufferedImage miniMapImage = null;
         
         public JLogChartView() {
             addChartViewListener(this);
@@ -606,6 +587,18 @@ public class JLogChart extends javax.swing.JPanel implements
             group.draw(g, BG_COLOR);
         }
         
+        private void updateMiniMapImage() {
+            BoundedRangeModel fullView = new DefaultBoundedRangeModel();
+            fullView.setMinimum(xRange.getMinimum());
+            fullView.setMaximum(xRange.getMaximum());
+            fullView.setExtent(xRange.getMaximum());
+
+            // Paint an image for the full chart series
+            miniMapImage = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
+            Graphics g = miniMapImage.getGraphics();
+            view.drawVisibleSeries(g, fullView);
+        }
+        
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -663,6 +656,14 @@ public class JLogChart extends javax.swing.JPanel implements
             selectionSamp2 = stopSample;
             selectionValid = true;
             repaint();
+        }
+    
+        @Override
+        public BufferedImage getMiniMapImage() {
+            if (miniMapImage == null) {
+                updateMiniMapImage();
+            }
+            return miniMapImage;
         }
     }
     
