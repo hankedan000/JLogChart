@@ -40,8 +40,6 @@ public class MiniMapScrollbar extends JScrollBar {
             g.setColor(new Color(255, 255, 255, 25));
             g.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
             // Draw border rect
-            g.setColor(Color.LIGHT_GRAY);
-            g.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
         }
 
         @Override
@@ -80,8 +78,6 @@ public class MiniMapScrollbar extends JScrollBar {
     
     public MiniMapScrollbar() {
         setUI(minimapUI);
-        // Full transparent background
-        setBackground(new Color(0, 0, 0, 20));
     }
     
     public void setMiniMapable(MiniMapable mm) {

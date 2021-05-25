@@ -16,6 +16,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
+import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -38,9 +39,7 @@ public class JLogChart extends javax.swing.JPanel implements
     public static final int NORMAL_THICKNESS = 1;
     public static final int BOLD_THICKNESS = 3;
 
-    // The user can select and place a vertical bar on a sample
-    private boolean showSelectedSample = false;
-    private int selectedSampleIdx = 0;
+    private final JLogChartView view = new JLogChartView();
 
     // Delta time in seconds between time samples
     private double dt = 0.0;
@@ -84,6 +83,7 @@ public class JLogChart extends javax.swing.JPanel implements
     public JLogChart() {
         initComponents();
         
+        add(view, BorderLayout.CENTER);
         xRange = view.getX_RangeModel();
         
         scrollbarPanel.setBackground(new Color(0,0,0,0));
@@ -181,6 +181,8 @@ public class JLogChart extends javax.swing.JPanel implements
                 newLeftViewedSamp = Integer.max(view.leftViewedSamp(), newLeftViewedSamp);
                 newRightViewedSamp = Integer.min(view.rightViewedSamp(), newRightViewedSamp);
             }
+            view.setX_RangeMin(0);
+            view.setX_RangeMax(chartSamps);
             view.setViewBounds(newLeftViewedSamp, newRightViewedSamp);
             series.addSeriesListener(this);
             logger.log(Level.FINE,
@@ -240,7 +242,7 @@ public class JLogChart extends javax.swing.JPanel implements
         // Paint an image for the full chart series
         miniMapImage = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
         Graphics g = miniMapImage.getGraphics();
-        drawVisibleSeries(g, fullView);
+        view.drawVisibleSeries(g, fullView);
     }
     
     private void updateAfterDataChange() {
@@ -272,106 +274,6 @@ public class JLogChart extends javax.swing.JPanel implements
         if (newLeftViewedSamp < newRightViewedSamp) {
             view.setViewBounds(newLeftViewedSamp, newRightViewedSamp);
         }
-    }
-
-    private void drawSelection(Graphics g) {
-//        double pxPerSamp = getPxPerSample();
-//        int offset1 = selectionSamp1 - leftViewedSamp();
-//        int offset2 = selectionSamp2 - leftViewedSamp();
-//        int x1 = (int)(offset1 * pxPerSamp);
-//        int x2 = (int)(offset2 * pxPerSamp);
-//        int width = Math.abs(x2 - x1);
-//        int leftX = Integer.min(x1, x2);
-//        g.setColor(new Color(200, 200, 200, 50));
-//        g.fillRect(leftX, 0, width, getHeight());
-//        
-//        // Draw end lines
-//        g.setColor(Color.LIGHT_GRAY);
-//        g.drawLine(x1, 0, x1, getHeight());
-//        g.drawLine(x2, 0, x2, getHeight());
-    }
-
-    private void drawSeries(Graphics g, Series series, BoundedRangeModel brm) {
-        if (series.getData() == null) {
-            return;
-        }
-        
-        Graphics2D g2 = (Graphics2D)g;
-        g2.setColor(series.getColor());
-        if (series.isBolded()) {
-            g2.setStroke(new BasicStroke(BOLD_THICKNESS));
-        } else {
-            g2.setStroke(new BasicStroke(NORMAL_THICKNESS));
-        }
-
-        // Compute x-axis scaling factor
-        double pxPerSamp = view.getPxPerSample(brm);
-        
-        // Compute y-axis scaling factor
-        double minY = series.minValue();
-        double maxY = series.maxValue();
-        if (singleY_ScaleEnabled) {
-            minY = minValueY;
-            maxY = maxValueY;
-        }
-        double pxPerVal = getHeight() / (maxY - minY);
-
-        /**
-         * We really don't need to draw every single data point in the
-         * series. Worst case scenario we draw a data point at each
-         * horizontal pixel in the chart. This math computes the decimated
-         * sample stride that helps improve draw time when the number of
-         * horizontal chart pixels is less than the total number of 
-         * visible samples.
-         */
-        int visibleSamps = view.visibleSamps(brm);
-        double sampStride = 1.0;
-        if (sampleDecimationEnabled && visibleSamps > getWidth()) {
-            sampStride = visibleSamps / getWidth();
-        }
-        logger.log(Level.FINE,
-                "visibleSamps = {0}; width = {1}; sampStride = {2}",
-                new Object[]{visibleSamps,getWidth(),sampStride});
-
-        int prevX = -1;
-        int prevY = -1;
-        int leftViewedSamp = view.leftViewedSamp(brm);
-        int rightViewedSamp = view.rightViewedSamp(brm);
-        double i = leftViewedSamp;
-        while (i<=rightViewedSamp && i<series.getData().size()) {
-            int currX = (int)((i - leftViewedSamp) * pxPerSamp);
-            int currY = getHeight() - (int)((series.getData().get((int)i) - minY) * pxPerVal);
-
-            if (prevX >= 0 && prevY >= 0) {
-                g.drawLine(prevX, prevY, currX, currY);
-            }
-
-            prevX = currX;
-            prevY = currY;
-
-            i += sampStride;
-        }
-    }
-
-    private void drawVisibleSeries(Graphics g, BoundedRangeModel brm) {
-        for (Series series : allSeries) {
-            if (series.getVisible()) {
-                drawSeries(g, series, brm);
-            }
-        }
-    }
-
-    private void drawSelectedSample(Graphics g) {
-        if (selectedSampleIdx < view.leftViewedSamp()) {
-            return;
-        } else if (selectedSampleIdx > view.rightViewedSamp()) {
-            return;
-        }
-
-        g.setColor(Color.CYAN);
-        int sampOffset = selectedSampleIdx - view.leftViewedSamp();
-        int sampX = (int)(sampOffset * view.getPxPerSample());
-        g.drawLine(sampX, 0, sampX, getHeight());
     }
 
     private class Label {
@@ -448,80 +350,6 @@ public class JLogChart extends javax.swing.JPanel implements
                 l.draw(g);
             }
         }
-    }
-
-    private void drawMinMaxOverlay(Graphics g) {
-        int CHART_MARGIN = 3;// margin around chart to keep out of
-        int TEXT_SEPERATION = 0;// px between text
-        Color BG_COLOR = new Color(0, 0, 0, 50);
-        
-        FontMetrics fm = g.getFontMetrics();
-        int textHeight = fm.getHeight();
-
-        LabelGroup maxGroup = new LabelGroup();
-        LabelGroup minGroup = new LabelGroup();
-        for (int i=0; i<allSeries.size(); i++) {
-            Series series = allSeries.get(i);
-
-            int yOffset = textHeight * (i+1) + TEXT_SEPERATION * i;
-
-            String maxText = String.format("max: %.3f",series.maxValue());
-            int maxPosY = CHART_MARGIN + yOffset;
-            int maxPosX = CHART_MARGIN;
-            maxGroup.addLabel(new Label(maxText,series.getColor(),maxPosX,maxPosY));
-
-            String minText = String.format("min: %.3f",series.minValue());
-            int minPosY = getHeight() - CHART_MARGIN - textHeight * allSeries.size() + yOffset;
-            int minPosX = CHART_MARGIN;
-            minGroup.addLabel(new Label(minText,series.getColor(),minPosX,minPosY));
-        }
-        
-        maxGroup.draw(g, BG_COLOR);
-        minGroup.draw(g, BG_COLOR);
-    }
-    
-    private void drawSelectionOverlay(Graphics g) {
-//        int CHART_MARGIN = 3;// margin around chart to keep out of
-//        int TEXT_SEPERATION = 0;// px between text
-//        Color BG_COLOR = new Color(0, 0, 0, 50);
-//        
-//        FontMetrics fm = g.getFontMetrics();
-//        int textHeight = fm.getHeight();
-//        int yOffset = CHART_MARGIN + textHeight;
-//        
-//        LabelGroup group = new LabelGroup();
-//        int deltaSamps = selectionSamp2 - selectionSamp1;
-//        double deltaTime = deltaSamps * dt;
-//        String dtText = String.format("delta time = %.3fs", deltaTime);
-//        group.addLabel(new Label(dtText, Color.LIGHT_GRAY, getWidth() - 150, yOffset));
-//        
-//        group.draw(g, BG_COLOR);
-    }
-
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
-
-        // Draw the chart view
-        drawVisibleSeries(g, xRange);
-        if (showSelectedSample) {
-            drawSelectedSample(g);
-        }
-        
-        // Draw chart overlays
-//        switch (dragState) {
-//            case DRAG_STATE_IDLE:
-//            case DRAG_STATE_PRESSED:
-//                break;
-//            case DRAG_STATE_DRAGGING:
-//            case DRAG_STATE_COMPLETE:
-//                drawSelection(chartGraphics);
-//                drawSelectionOverlay(chartGraphics);
-//                break;
-//            default:
-//                break;
-//        }
-        drawMinMaxOverlay(g);
     }
     
     public static void main(String[] args) {
@@ -619,6 +447,225 @@ public class JLogChart extends javax.swing.JPanel implements
         return miniMapImage;
     }
 
+    private class JLogChartView extends ChartView implements ChartViewListener {
+        // The user can select and place a vertical bar on a sample
+        private int selectedSample = -1;
+        
+        private boolean selectionValid = false;
+        private int selectionSamp1, selectionSamp2;
+        
+        public JLogChartView() {
+            addChartViewListener(this);
+        }
+        
+        private void drawSelection(Graphics g) {
+            double pxPerSamp = getPxPerSample();
+            int offset1 = selectionSamp1 - leftViewedSamp();
+            int offset2 = selectionSamp2 - leftViewedSamp();
+            int x1 = (int)(offset1 * pxPerSamp);
+            int x2 = (int)(offset2 * pxPerSamp);
+            int width = Math.abs(x2 - x1);
+            int leftX = Integer.min(x1, x2);
+            g.setColor(new Color(200, 200, 200, 50));
+            g.fillRect(leftX, 0, width, getHeight());
+            
+            // Draw end lines
+            g.setColor(Color.LIGHT_GRAY);
+            g.drawLine(x1, 0, x1, getHeight());
+            g.drawLine(x2, 0, x2, getHeight());
+        }
+
+        private void drawSeries(Graphics g, Series series, BoundedRangeModel brm) {
+            if (series.getData() == null) {
+                return;
+            }
+
+            Graphics2D g2 = (Graphics2D)g;
+            g2.setColor(series.getColor());
+            if (series.isBolded()) {
+                g2.setStroke(new BasicStroke(BOLD_THICKNESS));
+            } else {
+                g2.setStroke(new BasicStroke(NORMAL_THICKNESS));
+            }
+
+            // Compute x-axis scaling factor
+            double pxPerSamp = getPxPerSample(brm);
+
+            // Compute y-axis scaling factor
+            double minY = series.minValue();
+            double maxY = series.maxValue();
+            if (singleY_ScaleEnabled) {
+                minY = minValueY;
+                maxY = maxValueY;
+            }
+            double pxPerVal = getHeight() / (maxY - minY);
+
+            /**
+             * We really don't need to draw every single data point in the
+             * series. Worst case scenario we draw a data point at each
+             * horizontal pixel in the chart. This math computes the decimated
+             * sample stride that helps improve draw time when the number of
+             * horizontal chart pixels is less than the total number of 
+             * visible samples.
+             */
+            int visibleSamps = visibleSamps(brm);
+            double sampStride = 1.0;
+            if (sampleDecimationEnabled && visibleSamps > getWidth()) {
+                sampStride = visibleSamps / getWidth();
+            }
+            logger.log(Level.FINE,
+                    "visibleSamps = {0}; width = {1}; sampStride = {2}",
+                    new Object[]{visibleSamps,getWidth(),sampStride});
+
+            int prevX = -1;
+            int prevY = -1;
+            int leftViewedSamp = leftViewedSamp(brm);
+            int rightViewedSamp = rightViewedSamp(brm);
+            double i = leftViewedSamp;
+            while (i<=rightViewedSamp && i<series.getData().size()) {
+                int currX = (int)((i - leftViewedSamp) * pxPerSamp);
+                int currY = getHeight() - (int)((series.getData().get((int)i) - minY) * pxPerVal);
+
+                if (prevX >= 0 && prevY >= 0) {
+                    g.drawLine(prevX, prevY, currX, currY);
+                }
+
+                prevX = currX;
+                prevY = currY;
+
+                i += sampStride;
+            }
+        }
+
+        private void drawVisibleSeries(Graphics g, BoundedRangeModel brm) {
+            for (Series series : allSeries) {
+                if (series.getVisible()) {
+                    drawSeries(g, series, brm);
+                }
+            }
+        }
+
+        private void drawSelectedSample(Graphics g) {
+            if (selectedSample < leftViewedSamp()) {
+                return;
+            } else if (selectedSample > rightViewedSamp()) {
+                return;
+            }
+
+            int sampOffset = selectedSample - leftViewedSamp();
+            int sampX = (int)(sampOffset * getPxPerSample());
+            g.setColor(Color.CYAN);
+            g.drawLine(sampX, 0, sampX, getHeight());
+        }
+
+        private void drawMinMaxOverlay(Graphics g) {
+            int CHART_MARGIN = 3;// margin around chart to keep out of
+            int TEXT_SEPERATION = 0;// px between text
+            Color BG_COLOR = new Color(0, 0, 0, 50);
+
+            FontMetrics fm = g.getFontMetrics();
+            int textHeight = fm.getHeight();
+
+            LabelGroup maxGroup = new LabelGroup();
+            LabelGroup minGroup = new LabelGroup();
+            for (int i=0; i<allSeries.size(); i++) {
+                Series series = allSeries.get(i);
+
+                int yOffset = textHeight * (i+1) + TEXT_SEPERATION * i;
+
+                String maxText = String.format("max: %.3f",series.maxValue());
+                int maxPosY = CHART_MARGIN + yOffset;
+                int maxPosX = CHART_MARGIN;
+                maxGroup.addLabel(new Label(maxText,series.getColor(),maxPosX,maxPosY));
+
+                String minText = String.format("min: %.3f",series.minValue());
+                int minPosY = getHeight() - CHART_MARGIN - textHeight * allSeries.size() + yOffset;
+                int minPosX = CHART_MARGIN;
+                minGroup.addLabel(new Label(minText,series.getColor(),minPosX,minPosY));
+            }
+
+            maxGroup.draw(g, BG_COLOR);
+            minGroup.draw(g, BG_COLOR);
+        }
+
+        private void drawSelectionOverlay(Graphics g) {
+            int CHART_MARGIN = 3;// margin around chart to keep out of
+            int TEXT_SEPERATION = 0;// px between text
+            Color BG_COLOR = new Color(0, 0, 0, 50);
+            
+            FontMetrics fm = g.getFontMetrics();
+            int textHeight = fm.getHeight();
+            int yOffset = CHART_MARGIN + textHeight;
+            
+            LabelGroup group = new LabelGroup();
+            int deltaSamps = selectionSamp2 - selectionSamp1;
+            double deltaTime = deltaSamps * dt;
+            String dtText = String.format("delta time = %.3fs", deltaTime);
+            group.addLabel(new Label(dtText, Color.LIGHT_GRAY, getWidth() - 150, yOffset));
+            
+            group.draw(g, BG_COLOR);
+        }
+        
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            
+            // Draw the chart view
+            drawVisibleSeries(g, xRange);
+            if (selectedSample != -1) {
+                drawSelectedSample(g);
+            }
+
+            // Draw chart overlays
+            if (selectionValid) {
+                drawSelection(g);
+                drawSelectionOverlay(g);
+            }
+            drawMinMaxOverlay(g);
+        }
+
+        @Override
+        public void onSampleClicked(int sample, boolean isPanClick) {
+            if ( ! isPanClick) {
+                selectedSample = sample;
+                repaint();
+            }
+        }
+
+        @Override
+        public void onLeftClicked(MouseEvent e) {
+        }
+
+        @Override
+        public void onRightClicked(MouseEvent e) {
+            selectedSample = -1;
+            selectionValid = false;
+            repaint();
+        }
+
+        @Override
+        public void onDragStarted(int startSample) {
+            selectionSamp1 = startSample;
+            repaint();
+        }
+
+        @Override
+        public void onDragging(int startSample, int currSample) {
+            selectionSamp1 = startSample;
+            selectionSamp2 = currSample;
+            selectionValid = true;
+            repaint();
+        }
+
+        @Override
+        public void onDragComplete(int startSample, int stopSample) {
+            selectionSamp1 = startSample;
+            selectionSamp2 = stopSample;
+            selectionValid = true;
+            repaint();
+        }
+    }
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -628,13 +675,11 @@ public class JLogChart extends javax.swing.JPanel implements
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        view = new com.hankedan.jlogchart.ChartView();
         scrollbarPanel = new javax.swing.JPanel();
         miniMapScrollbar = new com.hankedan.jlogchart.MiniMapScrollbar();
         scrollbar = new javax.swing.JScrollBar();
 
         setLayout(new java.awt.BorderLayout());
-        add(view, java.awt.BorderLayout.CENTER);
 
         scrollbarPanel.setLayout(new java.awt.BorderLayout());
 
@@ -652,6 +697,5 @@ public class JLogChart extends javax.swing.JPanel implements
     private com.hankedan.jlogchart.MiniMapScrollbar miniMapScrollbar;
     private javax.swing.JScrollBar scrollbar;
     private javax.swing.JPanel scrollbarPanel;
-    private com.hankedan.jlogchart.ChartView view;
     // End of variables declaration//GEN-END:variables
 }

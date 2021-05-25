@@ -10,6 +10,8 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoundedRangeModel;
@@ -32,15 +34,14 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * minimum -> always zero
      * maximum -> the maximum number of samples across all series
      */
-    private final BoundedRangeModel xRange = new DefaultBoundedRangeModel();
-    private final BoundedRangeModel yRange = new DefaultBoundedRangeModel();
+    protected final BoundedRangeModel xRange = new DefaultBoundedRangeModel();
+    protected final BoundedRangeModel yRange = new DefaultBoundedRangeModel();
 
     // Set to true if the mouse is hovering over the chart
     private boolean mouseFocused = false;
 
     /**
      * IDLE
-     * No drag rectangle is drawn to the chart.
      * This state is the default state when the LogChart is constructed.
      * This state can be entered when the user single clicks on a point in
      * the chart.
@@ -48,25 +49,16 @@ public class ChartView extends JPanel implements MouseWheelListener,
     private static final int DRAG_STATE_IDLE = 0;
     /**
      * PRESSED
-     * No drag rectangle is drawn to the chart.
      * This state is only transitioned to temporarily. It's entered from
      * IDLE state when the mouseClicked() event occurs.
      */
     private static final int DRAG_STATE_PRESSED = 1;
     /**
      * DRAGGING
-     * Drag rectangle is drawn to the chart.
      * This state is entered from the PRESSED state when the mouseDragged()
      * event occurs.
      */
     private static final int DRAG_STATE_DRAGGING = 2;
-    /**
-     * COMPLETE
-     * Drag rectangle is drawn to the chart.
-     * This state is entered from the DRAGGING state when the mouseReleased()
-     * event occurs.
-     */
-    private static final int DRAG_STATE_COMPLETE = 3;
     private int dragState = DRAG_STATE_IDLE;
     private int selectionSamp1 = 0;
     private int selectionSamp2 = 0;
@@ -74,10 +66,20 @@ public class ChartView extends JPanel implements MouseWheelListener,
     // If enabled, when the user clicks near edge, the chart will pan
     private boolean clickToPanEnabled = true;
     
+    private final List<ChartViewListener> listeners = new ArrayList();
+    
     public ChartView() {
         addMouseListener(this);
         addMouseMotionListener(this);
         addMouseWheelListener(this);
+    }
+    
+    public void addChartViewListener(ChartViewListener l) {
+        listeners.add(l);
+    }
+    
+    public void removeChartViewLisener(ChartViewListener l) {
+        listeners.remove(l);
     }
     
     public void setX_RangeMin(int min) {
@@ -158,7 +160,6 @@ public class ChartView extends JPanel implements MouseWheelListener,
         }
         
         int visibleSamps = newRightViewedSamp - newLeftViewedSamp;
-//        ignoreNextScrollEvent = updateFromScrollEvent;
         xRange.setValue(newLeftViewedSamp);
         xRange.setExtent(visibleSamps);
 
@@ -266,19 +267,11 @@ public class ChartView extends JPanel implements MouseWheelListener,
 
     @Override
     public void mouseClicked(MouseEvent e) {
-        boolean repaintRequired = false;
-        
+        boolean isPanClick = false;
+        int selectedSample = -1;
+
         if (e.getButton() == MouseEvent.BUTTON1) {// Left click
-            // See if selection is new, if so update and redraw
-            int newSelectedSampleIdx = getNearestSampleIdx(e.getX());
-            // FIXME need to move sample selection/show to subclass
-//            boolean isNewSelection = newSelectedSampleIdx != selectedSampleIdx;
-//            if ( ! showSelectedSample || isNewSelection) {
-//                selectedSampleIdx = getNearestSampleIdx(e.getX());
-//                showSelectedSample = true;
-//                dragState = DRAG_STATE_IDLE;
-//                repaintRequired = true;
-//            }
+            selectedSample = getNearestSampleIdx(e.getX());
             
             // Click panning centers the visible area around the click location
             if (clickToPanEnabled) {
@@ -293,59 +286,86 @@ public class ChartView extends JPanel implements MouseWheelListener,
                 if (withinPanMargin) {
                     int panDistance = e.getX() - getWidth() / 2;
                     panPixels(panDistance);
+                    isPanClick = true;
                 }
             }
-        } else if (e.getButton() == MouseEvent.BUTTON3) {// Right click
-            // Clear selection and drag on a right click
-            // FIXME need to move sample selection/show to subclass
-//            showSelectedSample = false;
-            dragState = DRAG_STATE_IDLE;
-            repaintRequired = true;
         }
         
-        // Repaint the chart if an update is required
-        if (repaintRequired) {
-            repaint();
+        // Notify any listeners of the event
+        for (ChartViewListener cvl : listeners) {
+            if (cvl == null) {
+                continue;
+            }
+            
+            if (selectedSample >= 0) {
+                cvl.onSampleClicked(selectedSample, isPanClick);
+            }
+            if (e.getButton() == MouseEvent.BUTTON1) {
+                cvl.onLeftClicked(e);
+            } else if (e.getButton() == MouseEvent.BUTTON3) {
+                cvl.onRightClicked(e);
+            }
         }
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (dragState == DRAG_STATE_IDLE || dragState == DRAG_STATE_COMPLETE) {
+        if (dragState == DRAG_STATE_IDLE) {
             selectionSamp1 = getNearestSampleIdx(e.getX());
             dragState = DRAG_STATE_PRESSED;
         }
-        repaint();
     }
 
     @Override
     public void mouseReleased(MouseEvent e) {
         if (dragState == DRAG_STATE_DRAGGING) {
             selectionSamp2 = getNearestSampleIdx(e.getX());
-            dragState = DRAG_STATE_COMPLETE;
+            
+            // Notify any listeners of the drag complete event
+            for (ChartViewListener cvl : listeners) {
+                if (cvl == null) {
+                    continue;
+                }
+
+                cvl.onDragComplete(selectionSamp1, selectionSamp2);
+            }
         }
-        repaint();
+        dragState = DRAG_STATE_IDLE;
     }
 
     @Override
     public void mouseEntered(MouseEvent e) {
         mouseFocused = true;
-        repaint();
     }
 
     @Override
     public void mouseExited(MouseEvent e) {
         mouseFocused = false;
-        repaint();
     }
 
     @Override
     public void mouseDragged(MouseEvent e) {
+        boolean startedDrag = false;
         if (dragState == DRAG_STATE_PRESSED) {
+            startedDrag = true;
             dragState = DRAG_STATE_DRAGGING;
+            // Note: selectionSamp1 was assigned in the mousePressed handler
+        } else {
+            selectionSamp2 = getNearestSampleIdx(e.getX());
         }
-        selectionSamp2 = getNearestSampleIdx(e.getX());
-        repaint();
+        
+        // Notify any listeners of the drag start/complete event
+        for (ChartViewListener cvl : listeners) {
+            if (cvl == null) {
+                continue;
+            }
+
+            if (startedDrag) {
+                cvl.onDragStarted(selectionSamp1);
+            } else {
+                cvl.onDragging(selectionSamp1, selectionSamp2);
+            }
+        }
     }
 
     @Override
