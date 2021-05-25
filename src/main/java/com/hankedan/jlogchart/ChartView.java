@@ -205,6 +205,15 @@ public class ChartView extends JPanel implements MouseWheelListener,
         // No need to set repaintRequired, setViewBounds() repaints
         setViewBounds(newLeftViewedSamp, newRightViewedSamp);
     }
+    
+    /**
+     * Sets the viewable area of the chart so that the full x-range of the
+     * data is visible.
+     */
+    public void fitViewWidthToData() {
+        xRange.setValue(xRange.getMinimum());
+        xRange.setExtent(xRange.getMaximum());
+    }
 
     /**
      * Gets the nearest sample index to the x pixel position on the chart.

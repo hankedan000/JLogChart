@@ -223,6 +223,14 @@ public class JLogChart extends javax.swing.JPanel implements
         return null;
     }
     
+    /**
+     * Getter for the JLogChart's ChartView component
+     * @return 
+     */
+    public ChartView getChartView() {
+        return view;
+    }
+    
     private void updateAfterDataChange() {
         int newMinX = Integer.MAX_VALUE;
         int newMaxX = Integer.MIN_VALUE;
@@ -369,6 +377,7 @@ public class JLogChart extends javax.swing.JPanel implements
                 jlc.addSeries("sin", sinData).setBolded(true);
                 jlc.addSeries("cos", cosData).setOffset(500);
                 jlc.addSeries("sin - 2", negSinData);
+                jlc.getChartView().fitViewWidthToData();
                 
                 // Show the GUI
                 frame.pack();
