@@ -149,8 +149,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
 
         // Update the bounds accordingly
         int newLeftViewedSamp = leftIdx;
-        if (leftIdx < 0) {
-            newLeftViewedSamp = 0;
+        if (leftIdx < xRange.getMinimum()) {
+            newLeftViewedSamp = xRange.getMinimum();
         }
         int newRightViewedSamp = rightIdx;
         if (rightIdx > xRange.getMaximum()) {

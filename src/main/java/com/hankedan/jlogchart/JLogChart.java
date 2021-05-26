@@ -417,9 +417,6 @@ public class JLogChart extends javax.swing.JPanel implements
 
     @Override
     public void seriesOffsetChanged(String seriesName, int oldOffset, int newOffset) {
-        logger.log(Level.INFO,
-                "Series ''{0}'' offset changed from {1} to {2}",
-                new Object[]{seriesName,oldOffset,newOffset});
         // Recompute view bounds, scroll bounds, etc with new offset values
         updateAfterDataChange();
         repaint();
