@@ -114,7 +114,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
         }
     }
     
-    public int visibleSamps() {
+    public int visibleHorzSamps() {
         return visibleSamps(xRange);
     }
     
@@ -122,44 +122,60 @@ public class ChartView extends JPanel implements MouseWheelListener,
         return brm.getExtent();
     }
     
-    public int leftViewedSamp() {
-        return leftViewedSamp(xRange);
-    }
-    
-    protected int leftViewedSamp(BoundedRangeModel brm) {
+    protected int lowerViewedSamp(BoundedRangeModel brm) {
         return brm.getValue();
     }
     
-    public int rightViewedSamp() {
-        return rightViewedSamp(xRange);
-    }
-    
-    protected int rightViewedSamp(BoundedRangeModel brm) {
+    protected int upperViewedSamp(BoundedRangeModel brm) {
         return brm.getValue() + brm.getExtent();
     }
+    
+    public int leftViewedSamp() {
+        return lowerViewedSamp(xRange);
+    }
+    
+    public int rightViewedSamp() {
+        return upperViewedSamp(xRange);
+    }
+    
+    public int topViewedSamp() {
+        return lowerViewedSamp(yRange);
+    }
+    
+    public int bottomViewedSamp() {
+        return upperViewedSamp(yRange);
+    }
+    
+    public void setHorzViewBounds(int leftIdx, int rightIdx) {
+        setViewBounds(leftIdx, rightIdx, xRange);
+    }
 
-    public void setViewBounds(int leftIdx, int rightIdx) {
-        if (leftIdx >= rightIdx) {
+
+    public void setVertViewBounds(int topIdx, int bottomIdx) {
+        setViewBounds(topIdx, bottomIdx, yRange);
+    }
+    protected void setViewBounds(int lowerIdx, int upperIdx, BoundedRangeModel brm) {
+        if (lowerIdx >= upperIdx) {
             logger.log(Level.WARNING,
-                    "View bounds are invalid. leftIdx must be < rightIdx." + 
-                    " leftIdx = {0}; rightIdx = {1}",
-                    new Object[]{leftIdx,rightIdx});
+                    "View bounds are invalid. lowerIdx must be < upperIdx." + 
+                    " leftIdx = {0}; upperIdx = {1}",
+                    new Object[]{lowerIdx,upperIdx});
             return;
         }
 
         // Update the bounds accordingly
-        int newLeftViewedSamp = leftIdx;
-        if (leftIdx < xRange.getMinimum()) {
-            newLeftViewedSamp = xRange.getMinimum();
+        int newLowerViewedSamp = lowerIdx;
+        if (lowerIdx < brm.getMinimum()) {
+            newLowerViewedSamp = brm.getMinimum();
         }
-        int newRightViewedSamp = rightIdx;
-        if (rightIdx > xRange.getMaximum()) {
-            newRightViewedSamp = xRange.getMaximum();
+        int newUpperViewedSamp = upperIdx;
+        if (upperIdx > brm.getMaximum()) {
+            newUpperViewedSamp = brm.getMaximum();
         }
         
-        int visibleSamps = newRightViewedSamp - newLeftViewedSamp;
-        xRange.setValue(newLeftViewedSamp);
-        xRange.setExtent(visibleSamps);
+        int visibleSamps = newUpperViewedSamp - newLowerViewedSamp;
+        brm.setValue(newLowerViewedSamp);
+        brm.setExtent(visibleSamps);
 
         // Redraw chart with new bounds
         repaint();
@@ -188,7 +204,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * view to the right.
      */
     public void panPixels(int xPixels) {
-        int visibleSamps = visibleSamps() + 1;
+        int visibleSamps = visibleHorzSamps() + 1;
         int panSamps = (int)(xPixels / getPxPerSample());
         int newLeftViewedSamp = leftViewedSamp() + panSamps;
         int newRightViewedSamp = rightViewedSamp() + panSamps;
@@ -202,8 +218,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
             newRightViewedSamp = visibleSamps;
         }
 
-        // No need to set repaintRequired, setViewBounds() repaints
-        setViewBounds(newLeftViewedSamp, newRightViewedSamp);
+        // No need to set repaintRequired, setHorzViewBounds() repaints
+        setHorzViewBounds(newLeftViewedSamp, newRightViewedSamp);
     }
     
     /**
@@ -213,6 +229,14 @@ public class ChartView extends JPanel implements MouseWheelListener,
     public void fitViewWidthToData() {
         xRange.setValue(xRange.getMinimum());
         xRange.setExtent(xRange.getMaximum());
+    }
+    /**
+     * Sets the viewable area of the chart so that the full y-range of the
+     * data is visible.
+     */
+    public void fitViewHeightToData() {
+        yRange.setValue(yRange.getMinimum());
+        yRange.setExtent(yRange.getMaximum());
     }
 
     /**
@@ -242,33 +266,68 @@ public class ChartView extends JPanel implements MouseWheelListener,
      *   1.0 -> new visible portion is 0% of current visible portion
      *   0.0 -> new visible portion is 100% of current visible portion
      */
-    private void zoom(boolean zoomIn, int center, double amount) {
+    protected void zoomX(boolean zoomIn, int center, double amount) {
+        zoom(zoomIn,center,getWidth(),amount,xRange);
+    }
+
+    /**
+     * Zooms the visible portion of the chart and redraws
+     * @param zoomIn
+     * True if zooming in, false to zoom out
+     * @param center
+     * The y pixel location to center the zoom around
+     * @param amount 
+     * Amount to zoom by. Valid range is 0.0 to 1.0.
+     *   1.0 -> new visible portion is 0% of current visible portion
+     *   0.0 -> new visible portion is 100% of current visible portion
+     */
+    protected void zoomY(boolean zoomIn, int center, double amount) {
+        zoom(zoomIn,center,getHeight(),amount,yRange);
+    }
+
+    /**
+     * Zooms the visible portion of the chart and redraws
+     * @param zoomIn
+     * True if zooming in, false to zoom out
+     * @param center
+     * The x or y pixel component to center the zoom around
+     * @param charWidthOrHeight
+     * Width or height of the screen. If zooming horizontally, pass in the view
+     * width in pixels. If zooming vertically, pass in the view width in pixels.
+     * @param amount 
+     * Amount to zoom by. Valid range is 0.0 to 1.0.
+     *   1.0 -> new visible portion is 0% of current visible portion
+     *   0.0 -> new visible portion is 100% of current visible portion
+     * @param brm
+     * The range to perform the zoom on
+     */
+    protected void zoom(boolean zoomIn, int center, int charWidthOrHeight, double amount, BoundedRangeModel brm) {
         if (amount <= 0) {
             amount = 0;
         } else if (amount >= 1.0) {
             amount = 1.0;
         }
 
-        // We center the zooming around the mouse's x position
-        double leftZoomRatio = (double)(center) / getWidth();
-        double rightZoomRatio = 1.0 - leftZoomRatio;
+        // We center the zooming around the mouse's position
+        double lowerZoomRatio = (double)(center) / charWidthOrHeight;
+        double upperZoomRatio = 1.0 - lowerZoomRatio;
 
-        double sampsZoomed = visibleSamps() * amount;
-        int newLeftViewedSamp = leftViewedSamp();
-        int newRightViewedSamp = rightViewedSamp();
+        double sampsZoomed = visibleSamps(brm) * amount;
+        int newLowerViewedSamp = lowerViewedSamp(brm);
+        int newUpperViewedSamp = upperViewedSamp(brm);
         if (zoomIn) {
             // zoom in
-            newLeftViewedSamp += sampsZoomed * leftZoomRatio;
-            newRightViewedSamp -= sampsZoomed * rightZoomRatio;
+            newLowerViewedSamp += sampsZoomed * lowerZoomRatio;
+            newUpperViewedSamp -= sampsZoomed * upperZoomRatio;
         } else {
             // zoom out
-            newLeftViewedSamp -= sampsZoomed * leftZoomRatio;
-            newRightViewedSamp += sampsZoomed * rightZoomRatio;
+            newLowerViewedSamp -= sampsZoomed * lowerZoomRatio;
+            newUpperViewedSamp += sampsZoomed * upperZoomRatio;
         }
 
         // Update view bounds and redraw chart
-        if (newLeftViewedSamp < newRightViewedSamp) {
-            setViewBounds(newLeftViewedSamp, newRightViewedSamp);
+        if (newLowerViewedSamp < newUpperViewedSamp) {
+            setViewBounds(newLowerViewedSamp, newUpperViewedSamp, brm);
         }
     }
 
@@ -383,15 +442,15 @@ public class ChartView extends JPanel implements MouseWheelListener,
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
-        zoom(e.getWheelRotation() < 0, e.getX(), 0.2);
+        zoomX(e.getWheelRotation() < 0, e.getX(), 0.2);
     }
 
     @Override
     public void adjustmentValueChanged(AdjustmentEvent e) {
         int newLeftViewSamp = e.getValue();
-        int newRightViewSamp = newLeftViewSamp + visibleSamps();
+        int newRightViewSamp = newLeftViewSamp + visibleHorzSamps();
         if (newLeftViewSamp < newRightViewSamp) {
-            setViewBounds(newLeftViewSamp, newRightViewSamp);
+            setHorzViewBounds(newLeftViewSamp, newRightViewSamp);
         }
     }
     

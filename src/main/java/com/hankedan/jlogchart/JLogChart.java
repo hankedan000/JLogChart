@@ -173,7 +173,7 @@ public class JLogChart extends javax.swing.JPanel implements
             }
             view.setX_RangeMin(newX_Min);
             view.setX_RangeMax(newX_Max);
-            view.setViewBounds(newLeftViewedSamp, newRightViewedSamp);
+            view.setHorzViewBounds(newLeftViewedSamp, newRightViewedSamp);
             series.addSeriesListener(this);
             series.addFixedRateSeriesListener(this);
             logger.log(Level.FINE,
@@ -267,7 +267,7 @@ public class JLogChart extends javax.swing.JPanel implements
         xRange.setMinimum(newMinX);
         xRange.setMaximum(newMaxX);
         if (newLeftViewedSamp < newRightViewedSamp) {
-            view.setViewBounds(newLeftViewedSamp, newRightViewedSamp);
+            view.setHorzViewBounds(newLeftViewedSamp, newRightViewedSamp);
         }
     }
 
@@ -500,8 +500,8 @@ public class JLogChart extends javax.swing.JPanel implements
 
             int prevX = -1;
             int prevY = -1;
-            int leftViewedSamp = leftViewedSamp(brm);
-            int rightViewedSamp = rightViewedSamp(brm);
+            int leftViewedSamp = lowerViewedSamp(brm);
+            int rightViewedSamp = upperViewedSamp(brm);
             double absIdx = leftViewedSamp;
             int relIdx = series.getRelSampleIdx((int)absIdx);
             while (absIdx<=rightViewedSamp && relIdx<series.getData().size()) {
