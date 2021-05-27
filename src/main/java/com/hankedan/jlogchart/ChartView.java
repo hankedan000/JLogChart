@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoundedRangeModel;
-import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.JPanel;
 
 /**
@@ -41,6 +40,10 @@ public class ChartView extends JPanel implements MouseWheelListener,
 
     // Set to true if the mouse is hovering over the chart
     private boolean mouseFocused = false;
+    
+    // Set to true if zooming with the mouse wheel is enabled for each direction
+    private boolean horzWheelZoomingEnable = true;
+    private boolean vertWheelZoomingEnable = true;
 
     /**
      * IDLE
@@ -150,10 +153,15 @@ public class ChartView extends JPanel implements MouseWheelListener,
         setViewBounds(leftIdx, rightIdx, xRange);
     }
 
-
     public void setVertViewBounds(int topIdx, int bottomIdx) {
         setViewBounds(topIdx, bottomIdx, yRange);
     }
+    
+    protected void setWheelZoomEnables(boolean horzEnable, boolean vertEnable) {
+        horzWheelZoomingEnable = horzEnable;
+        vertWheelZoomingEnable = vertEnable;
+    }
+    
     protected void setViewBounds(int lowerIdx, int upperIdx, BoundedRangeModel brm) {
         if (lowerIdx >= upperIdx) {
             logger.log(Level.WARNING,
@@ -267,7 +275,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
      *   0.0 -> new visible portion is 100% of current visible portion
      */
     protected void zoomX(boolean zoomIn, int center, double amount) {
-        zoom(zoomIn,center,getWidth(),amount,xRange);
+        zoom1D(zoomIn,center,getWidth(),amount,xRange);
     }
 
     /**
@@ -282,7 +290,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
      *   0.0 -> new visible portion is 100% of current visible portion
      */
     protected void zoomY(boolean zoomIn, int center, double amount) {
-        zoom(zoomIn,center,getHeight(),amount,yRange);
+        zoom1D(zoomIn,center,getHeight(),amount,yRange);
     }
 
     /**
@@ -301,7 +309,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * @param brm
      * The range to perform the zoom on
      */
-    protected void zoom(boolean zoomIn, int center, int charWidthOrHeight, double amount, BoundedRangeModel brm) {
+    protected void zoom1D(boolean zoomIn, int center, int charWidthOrHeight, double amount, BoundedRangeModel brm) {
         if (amount <= 0) {
             amount = 0;
         } else if (amount >= 1.0) {
@@ -316,11 +324,11 @@ public class ChartView extends JPanel implements MouseWheelListener,
         int newLowerViewedSamp = lowerViewedSamp(brm);
         int newUpperViewedSamp = upperViewedSamp(brm);
         if (zoomIn) {
-            // zoom in
+            // zoom1D in
             newLowerViewedSamp += sampsZoomed * lowerZoomRatio;
             newUpperViewedSamp -= sampsZoomed * upperZoomRatio;
         } else {
-            // zoom out
+            // zoom1D out
             newLowerViewedSamp -= sampsZoomed * lowerZoomRatio;
             newUpperViewedSamp += sampsZoomed * upperZoomRatio;
         }
@@ -442,7 +450,14 @@ public class ChartView extends JPanel implements MouseWheelListener,
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
-        zoomX(e.getWheelRotation() < 0, e.getX(), 0.2);
+        double ZOOM_AMOUNT = 0.2;
+        boolean zoomIn = e.getWheelRotation() < 0;
+        if (horzWheelZoomingEnable) {
+            zoomX(zoomIn, e.getX(), ZOOM_AMOUNT);
+        }
+        if (vertWheelZoomingEnable) {
+            zoomY(zoomIn, e.getY(), ZOOM_AMOUNT);
+        }
     }
 
     @Override

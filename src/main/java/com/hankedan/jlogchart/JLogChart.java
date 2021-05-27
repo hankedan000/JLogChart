@@ -72,6 +72,9 @@ public class JLogChart extends javax.swing.JPanel implements
     public JLogChart() {
         initComponents();
         
+        // only allow horizontal zooming with the mouse wheel
+        view.setWheelZoomEnables(true, false);
+        
         add(view, BorderLayout.CENTER);
         xRange = view.getX_RangeModel();
         
