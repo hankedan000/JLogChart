@@ -36,8 +36,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * minimum -> always zero
      * maximum -> the maximum number of samples across all series
      */
-    protected final BoundedRangeModel xRange = new DefaultBoundedRangeModel();
-    protected final BoundedRangeModel yRange = new DefaultBoundedRangeModel();
+    protected final BoundedRangeModelDouble xRange = new BoundedRangeModelDouble();
+    protected final BoundedRangeModelDouble yRange = new BoundedRangeModelDouble();
 
     // Set to true if the mouse is hovering over the chart
     private boolean mouseFocused = false;
