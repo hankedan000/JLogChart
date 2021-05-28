@@ -96,6 +96,9 @@ public class XY_Chart extends javax.swing.JPanel {
             series = new XY_Series(name, color, data);
             allSeries.add(series);
             
+            logger.log(Level.FINE,
+                    "name = {2}; series.minValue = {0}; series.maxValue = {1}; ",
+                    new Object[]{series.minValue(),series.maxValue(),name});
             if (allSeries.size() == 1) {
                 minBounds = series.minValue();
                 maxBounds = series.maxValue();
