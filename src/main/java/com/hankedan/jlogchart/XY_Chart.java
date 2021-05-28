@@ -14,6 +14,8 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -129,7 +131,7 @@ public class XY_Chart extends javax.swing.JPanel {
         return null;
     }
     
-    private class XY_ChartView extends ChartView implements ChartViewListener {
+    private class XY_ChartView extends ChartView implements ChartViewListener, MouseWheelListener {
         /**
          * Pixels per series value in the x and y direction. This value changes
          * with zooming.
@@ -150,6 +152,7 @@ public class XY_Chart extends javax.swing.JPanel {
         
         public XY_ChartView() {
             addChartViewListener(this);
+            addMouseWheelListener(this);
         }
         
         public void fitViewToData() {
@@ -214,6 +217,45 @@ public class XY_Chart extends javax.swing.JPanel {
         
         private Vector2D val2px(Vector2D valVect) {
             return valVect.scalarMultiply(pxPerValue);
+        }
+        
+
+        /**
+         * Zooms the visible portion of the chart and redraws
+         * @param zoomIn
+         * True if zooming in, false to zoom out
+         * @param centerPx
+         * The x or y pixel component to center the zoom around
+         * @param amount 
+         * Amount to zoom by. Valid range is 0.0 to 1.0.
+         *   1.0 -> new visible portion is 0% times current visible portion
+         *   0.0 -> new visible portion is 100% times current visible portion
+         * @param brm
+         * The range to perform the zoom on
+         */
+        private void xyChartZoom(boolean zoomIn, Vector2D centerPx, double amount) {
+            if (amount < 0) {
+                amount = 0;
+            } else if (amount > 1) {
+                amount = 1;
+            }
+            
+            /**
+             * The below code is tricky, the values really do need to be
+             * computed and applied in different order based on if you're
+             * zooming in vs zooming out.
+             */
+            if (zoomIn) {
+                pxPerValue *= 1.0 + amount;
+                Vector2D zoomOffsetVal = px2val(centerPx).scalarMultiply(amount);
+                upperLeftLocation = upperLeftLocation.add(zoomOffsetVal);
+            } else {
+                Vector2D zoomOffsetVal = px2val(centerPx).scalarMultiply(amount);
+                upperLeftLocation = upperLeftLocation.subtract(zoomOffsetVal);
+                pxPerValue /= 1.0 + amount;
+            }
+            
+            repaint();
         }
         
         @Override
@@ -295,6 +337,13 @@ public class XY_Chart extends javax.swing.JPanel {
             }
             dragVectorPx = null;
             panOnDrag = false;
+        }
+
+        @Override
+        public void mouseWheelMoved(MouseWheelEvent e) {
+            double ZOOM_AMOUNT = 0.2;
+            boolean zoomIn = e.getWheelRotation() < 0;
+            xyChartZoom(zoomIn, VectorUtils.toVector(e), ZOOM_AMOUNT);
         }
         
     }

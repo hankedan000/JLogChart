@@ -274,8 +274,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * The x pixel location to center the zoom around
      * @param amount 
      * Amount to zoom by. Valid range is 0.0 to 1.0.
-     *   1.0 -> new visible portion is 0% of current visible portion
-     *   0.0 -> new visible portion is 100% of current visible portion
+     *   1.0 -> new visible portion is 0% times current visible portion
+     *   0.0 -> new visible portion is 100% times current visible portion
      */
     protected void zoomX(boolean zoomIn, int center, double amount) {
         zoom1D(zoomIn,center,getWidth(),amount,xRange);
@@ -289,8 +289,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * The y pixel location to center the zoom around
      * @param amount 
      * Amount to zoom by. Valid range is 0.0 to 1.0.
-     *   1.0 -> new visible portion is 0% of current visible portion
-     *   0.0 -> new visible portion is 100% of current visible portion
+     *   1.0 -> new visible portion is 0% times current visible portion
+     *   0.0 -> new visible portion is 100% times current visible portion
      */
     protected void zoomY(boolean zoomIn, int center, double amount) {
         zoom1D(zoomIn,center,getHeight(),amount,yRange);
@@ -307,8 +307,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * width in pixels. If zooming vertically, pass in the view width in pixels.
      * @param amount 
      * Amount to zoom by. Valid range is 0.0 to 1.0.
-     *   1.0 -> new visible portion is 0% of current visible portion
-     *   0.0 -> new visible portion is 100% of current visible portion
+     *   1.0 -> new visible portion is 0% times current visible portion
+     *   0.0 -> new visible portion is 100% times current visible portion
      * @param brm
      * The range to perform the zoom on
      */
