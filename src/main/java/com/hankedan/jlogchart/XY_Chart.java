@@ -16,7 +16,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.BoundedRangeModel;
 import javax.swing.JFrame;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
@@ -62,8 +61,10 @@ public class XY_Chart extends javax.swing.JPanel {
     //    +-----------------------------------------------------+
     
     private final double MARGIN_PERCENT = 0.1;
-    private Vector2D minBounds = VectorUtils.MAX_VALUE;
-    private Vector2D maxBounds = VectorUtils.MIN_VALUE;
+    private Vector2D upperLeftLocation = VectorUtils.MAX_VALUE;
+    
+    private Vector2D minBounds = null;
+    private Vector2D maxBounds = null;
     
     /**
      * Creates new form XY_Chart
@@ -89,38 +90,19 @@ public class XY_Chart extends javax.swing.JPanel {
             Color color = Series.getDefaultColor(allSeries.size());
             series = new XY_Series(name, color, data);
             allSeries.add(series);
-            Vector2D tempMinBounds = VectorUtils.min(minBounds, series.minValue());
-            Vector2D tempMaxBounds = VectorUtils.min(maxBounds, series.maxValue());
-            Vector2D diag = tempMaxBounds.subtract(tempMinBounds);
-            // Compute middle point of the new bounding box
-            Vector2D newMiddle = tempMinBounds.add(diag.scalarMultiply(0.5));
             
-            // Compute square bounds around newMiddle point
-            // Assume bounding box is taller than it is wide
-            double halfSqW = diag.getY() / 2.0;
-            if (diag.getX() > diag.getY()) {
-                // Realize bounding box is wider than it is tall
-                halfSqW = diag.getX() / 2.0;
+            if (allSeries.size() == 1) {
+                minBounds = series.minValue();
+                maxBounds = series.maxValue();
+                upperLeftLocation = minBounds;
+            } else {
+                minBounds = VectorUtils.min(minBounds, series.minValue());
+                maxBounds = VectorUtils.max(maxBounds, series.maxValue());
             }
-            Vector2D halfSqDiag = new Vector2D(halfSqW,halfSqW);
-            Vector2D newMinSqBounds = newMiddle.subtract(halfSqDiag);
-            Vector2D newMaxSqBounds = newMiddle.add(halfSqDiag);
-            int newX_Min = Integer.min(xRange.getMinimum(), 0);
-            int newX_Max = Integer.max(xRange.getMaximum(), data.size());
-            int newLeftViewedSamp = 0;
-            int newRightViewedSamp = newX_Max - 1;
-            if (allSeries.size() > 1) {
-                newLeftViewedSamp = Integer.max(view.leftViewedSamp(), newLeftViewedSamp);
-                newRightViewedSamp = Integer.min(view.rightViewedSamp(), newRightViewedSamp);
-            }
-            view.setX_RangeMin(newX_Min);
-            view.setX_RangeMax(newX_Max);
-            view.setHorzViewBounds(newLeftViewedSamp, newRightViewedSamp);
-            series.addSeriesListener(this);
-            series.addFixedRateSeriesListener(this);
             logger.log(Level.FINE,
-                    "leftViewedSamp = {0}; rightViewedSamp = {1};",
-                    new Object[]{view.leftViewedSamp(),view.rightViewedSamp()});
+                    "minBounds = {0}; maxBounds = {1}; ",
+                    new Object[]{minBounds,maxBounds});
+            
             repaint();
         }
         
@@ -145,19 +127,58 @@ public class XY_Chart extends javax.swing.JPanel {
     }
     
     private class XY_ChartView extends ChartView {
+        /**
+         * Pixels per series value in the x and y direction. This value changes
+         * with zooming.
+         */
+        private double pxPerValue = Double.NaN;
+    
+        public void fitViewToData() {
+            if (allSeries.isEmpty()) {
+                upperLeftLocation = new Vector2D(0, 0);
+                pxPerValue = 0;
+                return;
+            }
 
-        private void drawSeries(Graphics g, XY_Series series,
-                BoundedRangeModelDouble xr, BoundedRangeModelDouble yr) {
+            Vector2D diag = maxBounds.subtract(minBounds);
+            Vector2D middle = minBounds.add(diag.scalarMultiply(0.5));
+            // Compute sqaure bounding box, assume wider than tall
+            double halfSqW = diag.getX() / 2.0;
+            if (diag.getY() > diag.getX()) {
+                // Discover bounding bix is taller than it is wide
+                halfSqW = diag.getY() / 2.0;
+            }
+            Vector2D halfSqDiag = new Vector2D(halfSqW,halfSqW);
+            Vector2D minSqBounds = middle.subtract(halfSqDiag);
+            Vector2D maxSqBounds = middle.add(halfSqDiag);
+        }
+
+        private void drawSeries(Graphics g, XY_Series series) {
             if (series.getData() == null) {
                 return;
             }
+            
+            g.setColor(series.getColor());
+            
+            Vector2D prevOffsetPx = null;
+            for (Vector2D p : series.getData()) {
+                Vector2D offset = p.subtract(upperLeftLocation);
+                Vector2D offsetPx = offset.scalarMultiply(pxPerValue);
+                
+                if (prevOffsetPx != null) {
+                    g.drawLine(
+                            (int)prevOffsetPx.getX(), (int)prevOffsetPx.getY(),
+                            (int)offsetPx.getX(), (int)offsetPx.getY());
+                }
+                
+                prevOffsetPx = offsetPx;
+            }
         }
         
-        private void drawVisibleSeries(Graphics g, 
-                BoundedRangeModelDouble xr, BoundedRangeModelDouble yr) {
+        private void drawVisibleSeries(Graphics g) {
             for (XY_Series series : allSeries) {
                 if (series.getVisible()) {
-                    drawSeries(g, series, xr, yr);
+                    drawSeries(g, series);
                 }
             }
         }
@@ -165,8 +186,22 @@ public class XY_Chart extends javax.swing.JPanel {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
+            // See if we should try to recompute pxPerValue
+            if (Double.isNaN(pxPerValue)) {
+                // attempt to recompute
+                if (minBounds != null && maxBounds != null) {
+                    Vector2D diag = maxBounds.subtract(minBounds);
+                    // TODO make this smarter
+                    pxPerValue = (double)getWidth() / diag.getX();
+                }
+            }
             
-            drawVisibleSeries(g, xRange, yRange);
+            // Still nothing to draw even after attempted recompute
+            if (Double.isNaN(pxPerValue)) {
+                return;
+            }
+            
+            drawVisibleSeries(g);
         }
         
     }
@@ -186,15 +221,15 @@ public class XY_Chart extends javax.swing.JPanel {
                 chart.setPreferredSize(new Dimension(600, 400));
                 frame.add(chart, BorderLayout.CENTER);
                 
-                int N_SAMPS = 20;
-                double radPerSamp = Math.PI * 2 / N_SAMPS;
+                int N_SAMPS = 50;
+                double radPerSamp = Math.PI * 2 / (N_SAMPS - 1);
                 List<Vector2D> circData = new ArrayList();
                 for (int i=0; i<N_SAMPS; i++) {
                     double angle = i * radPerSamp;
                     circData.add(new Vector2D(Math.cos(angle), Math.sin(angle)));
                 }
                 chart.addSeries("circle", circData);
-                chart.getChartView().fitViewWidthToData();
+                chart.setVisible(true);
                 
                 // Show the GUI
                 frame.pack();

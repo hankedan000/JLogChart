@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoundedRangeModel;
+import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.JPanel;
 
 /**
@@ -35,8 +36,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * minimum -> always zero
      * maximum -> the maximum number of samples across all series
      */
-    protected final BoundedRangeModelDouble xRange = new BoundedRangeModelDouble();
-    protected final BoundedRangeModelDouble yRange = new BoundedRangeModelDouble();
+    protected final BoundedRangeModel xRange = new DefaultBoundedRangeModel();
+    protected final BoundedRangeModel yRange = new DefaultBoundedRangeModel();
 
     // Set to true if the mouse is hovering over the chart
     private boolean mouseFocused = false;

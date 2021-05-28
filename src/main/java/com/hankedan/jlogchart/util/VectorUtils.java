@@ -15,28 +15,15 @@ public class VectorUtils {
     public static final Vector2D MAX_VALUE = new Vector2D(Double.MAX_VALUE, Double.MAX_VALUE); 
     public static final Vector2D MIN_VALUE = new Vector2D(-Double.MAX_VALUE, -Double.MAX_VALUE);
     
-    public static int compare(Vector2D lhs, Vector2D rhs) {
-        int xCompare = Double.compare(lhs.getX(), rhs.getX());
-        if (xCompare == 0) {
-            return Double.compare(lhs.getY(), rhs.getY());
-        } else {
-            return xCompare;
-        }
-    }
-    
     public static Vector2D min(Vector2D a, Vector2D b) {
-        if (compare(a, b) < 0) {
-            return a;
-        } else {
-            return b;
-        }
+        return new Vector2D(
+                Double.min(a.getX(), b.getX()),
+                Double.min(a.getY(), b.getY()));
     }
     
     public static Vector2D max(Vector2D a, Vector2D b) {
-        if (compare(a, b) > 0) {
-            return a;
-        } else {
-            return b;
-        }
+        return new Vector2D(
+                Double.max(a.getX(), b.getX()),
+                Double.max(a.getY(), b.getY()));
     }
 }
