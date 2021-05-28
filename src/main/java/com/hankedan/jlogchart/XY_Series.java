@@ -5,6 +5,7 @@
  */
 package com.hankedan.jlogchart;
 
+import com.hankedan.jlogchart.util.VectorUtils;
 import java.awt.Color;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
@@ -65,12 +66,12 @@ public class XY_Series extends Series {
             if (minValue == null) {
                 minValue = val;
             } else {
-                minValue = minVector(minValue, val);
+                minValue = VectorUtils.min(minValue, val);
             }
             if (maxValue == null) {
                 maxValue = val;
             } else {
-                maxValue = maxVector(maxValue, val);
+                maxValue = VectorUtils.max(maxValue, val);
             }
         }
         this.data = newData;
@@ -82,30 +83,5 @@ public class XY_Series extends Series {
 
     public List<Vector2D> getData() {
         return Collections.unmodifiableList(data);
-    }
-    
-    private int compareVectors(Vector2D lhs, Vector2D rhs) {
-        int xCompare = Double.compare(lhs.getX(), rhs.getX());
-        if (xCompare == 0) {
-            return Double.compare(lhs.getY(), rhs.getY());
-        } else {
-            return xCompare;
-        }
-    }
-    
-    private Vector2D minVector(Vector2D a, Vector2D b) {
-        if (compareVectors(a, b) < 0) {
-            return a;
-        } else {
-            return b;
-        }
-    }
-    
-    private Vector2D maxVector(Vector2D a, Vector2D b) {
-        if (compareVectors(a, b) > 0) {
-            return a;
-        } else {
-            return b;
-        }
     }
 }

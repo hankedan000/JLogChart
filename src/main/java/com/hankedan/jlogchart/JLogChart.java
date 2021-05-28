@@ -57,15 +57,6 @@ public class JLogChart extends javax.swing.JPanel implements
     
     private final BoundedRangeModel xRange;
 
-    private final Color[] SERIES_COLOR_PALETTE = {
-        Color.RED,
-        Color.ORANGE,
-        Color.YELLOW,
-        Color.GREEN,
-        Color.BLUE,
-        Color.MAGENTA,
-    };
-
     // Map of all added chart series data vectors
     private final List<FixedRateSeries> allSeries = new ArrayList<>();
 
@@ -160,8 +151,7 @@ public class JLogChart extends javax.swing.JPanel implements
                     "Duplicate add of series data with name {0}. Ignoring.",
                     new Object[]{name});
         } else {
-            int colorIdx = allSeries.size() % SERIES_COLOR_PALETTE.length;
-            Color color = SERIES_COLOR_PALETTE[colorIdx];
+            Color color = Series.getDefaultColor(allSeries.size());
             series = new FixedRateSeries(name, color, data);
             allSeries.add(series);
             minValueY = Double.min(minValueY, series.minValue());

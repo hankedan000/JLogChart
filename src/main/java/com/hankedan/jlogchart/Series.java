@@ -21,6 +21,15 @@ public class Series {
         public void seriesBoldnessChanged(String seriesName, boolean bold);
         public void seriesColorChanged(String seriesName, Color oldColor, Color newColor);
     }
+
+    public static final Color[] SERIES_COLOR_PALETTE = {
+        Color.RED,
+        Color.ORANGE,
+        Color.YELLOW,
+        Color.GREEN,
+        Color.BLUE,
+        Color.MAGENTA,
+    };
     
     private static final Logger logger = Logger.getLogger(Series.class.getName());
     
@@ -99,5 +108,10 @@ public class Series {
 
     public void removeSeriesListener(SeriesChangeListener l) {
         listeners.remove(l);
+    }
+    
+    public static Color getDefaultColor(int idx) {
+        int colorIdx = idx % SERIES_COLOR_PALETTE.length;
+        return SERIES_COLOR_PALETTE[colorIdx];
     }
 }

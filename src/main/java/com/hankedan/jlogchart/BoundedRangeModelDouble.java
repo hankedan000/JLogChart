@@ -12,16 +12,31 @@ import javax.swing.DefaultBoundedRangeModel;
  * @author daniel
  */
 public class BoundedRangeModelDouble extends DefaultBoundedRangeModel {
-    private double minimum = 0;
-    private double maximum = 0;
-    private double step = 0;
+    private final double step;
+    
+    public BoundedRangeModelDouble() {
+        this(1.0);
+    }
+    
+    public BoundedRangeModelDouble(double step) {
+        this(step,0,0,0,0);
+    }
+    
+    public BoundedRangeModelDouble(double step, double value, double extent, double min, double max) {
+        super();
+        this.step = step;
+        setMinimumDouble(min);
+        setMaximumDouble(max);
+        setValueDouble(value);
+        setExtentDouble(extent);
+    }
     
     public double getMaximumDouble() {
-        return this.maximum;
+        return getMaximum() * step;
     }
     
     public double getMinimumDouble() {
-        return this.maximum;
+        return getMinimum() * step;
     }
 
     public double getValueDouble() {
@@ -36,35 +51,20 @@ public class BoundedRangeModelDouble extends DefaultBoundedRangeModel {
         return this.step;
     }
     
+    public void setValueDouble(double d) {
+        setValue((int)Math.round(d / step));
+    }
+    
+    public void setExtentDouble(double d) {
+        setExtent((int)Math.round(d / step));
+    }
+    
     public void setMaximumDouble(double d) {
-        this.maximum = d;
-        computeStep();
+        setMaximum((int)Math.round(d / step));
     }
     
     public void setMinimumDouble(double d) {
-        this.minimum = d;
-        computeStep();
-    }
-    
-    @Override
-    public void setMaximum(int n) {
-        super.setMaximum(n);
-        computeStep();
-    }
-
-    @Override
-    public void setMinimum(int n) {
-        super.setMinimum(n);
-        computeStep();
-    }
-
-    private void computeStep() {
-        int spread = getMaximum() - getMinimum();
-        if (spread == 0) {
-            step = 0;
-        } else {
-            step = (maximum - minimum) / (getMaximum() - getMinimum());
-        }
+        setMinimum((int)Math.round(d / step));
     }
     
 }
