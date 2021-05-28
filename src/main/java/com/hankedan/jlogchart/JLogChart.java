@@ -634,6 +634,10 @@ public class JLogChart extends javax.swing.JPanel implements
         }
 
         @Override
+        public void onMiddleClicked(MouseEvent e) {
+        }
+
+        @Override
         public void onRightClicked(MouseEvent e) {
             selectedAbsSample = -1;
             selectionValid = false;
@@ -647,6 +651,10 @@ public class JLogChart extends javax.swing.JPanel implements
         }
 
         @Override
+        public void onDragStarted(MouseEvent e) {
+        }
+
+        @Override
         public void onDragging(int startAbsSample, int currAbsSample) {
             selectionAbsSamp1 = startAbsSample;
             selectionAbsSamp2 = currAbsSample;
@@ -655,11 +663,19 @@ public class JLogChart extends javax.swing.JPanel implements
         }
 
         @Override
+        public void onDragging(MouseEvent e1, MouseEvent e2) {
+        }
+
+        @Override
         public void onDragComplete(int startAbsSample, int stopAbsSample) {
             selectionAbsSamp1 = startAbsSample;
             selectionAbsSamp2 = stopAbsSample;
             selectionValid = true;
             repaint();
+        }
+
+        @Override
+        public void onDragComplete(MouseEvent e1, MouseEvent e2) {
         }
     
         @Override

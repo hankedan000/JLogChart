@@ -11,6 +11,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -126,13 +127,29 @@ public class XY_Chart extends javax.swing.JPanel {
         return null;
     }
     
-    private class XY_ChartView extends ChartView {
+    private class XY_ChartView extends ChartView implements ChartViewListener {
         /**
          * Pixels per series value in the x and y direction. This value changes
          * with zooming.
          */
         private double pxPerValue = Double.NaN;
-    
+        
+        /**
+         * Equal to (currentMouseLocation - dragStartMouseLocation)
+         * 
+         * Temporary vector used to offset drawing while drag is in progress.
+         * Once drag completes, this vector is applied to the chart's
+         * 'upperLeftLocation' and then nullified again.
+         */
+        private Vector2D dragVectorPx = null;
+        
+        // Set to true when the middle mouse was pressed on the dragStarted
+        private boolean panOnDrag = false;
+        
+        public XY_ChartView() {
+            addChartViewListener(this);
+        }
+        
         public void fitViewToData() {
             if (allSeries.isEmpty()) {
                 upperLeftLocation = new Vector2D(0, 0);
@@ -153,7 +170,7 @@ public class XY_Chart extends javax.swing.JPanel {
             Vector2D maxSqBounds = middle.add(halfSqDiag);
         }
 
-        private void drawSeries(Graphics g, XY_Series series) {
+        private void drawSeries(Graphics g, Vector2D upperLeftValue, XY_Series series) {
             if (series.getData() == null) {
                 return;
             }
@@ -162,7 +179,7 @@ public class XY_Chart extends javax.swing.JPanel {
             
             Vector2D prevOffsetPx = null;
             for (Vector2D p : series.getData()) {
-                Vector2D offset = p.subtract(upperLeftLocation);
+                Vector2D offset = p.subtract(upperLeftValue);
                 Vector2D offsetPx = offset.scalarMultiply(pxPerValue);
                 
                 if (prevOffsetPx != null) {
@@ -175,12 +192,20 @@ public class XY_Chart extends javax.swing.JPanel {
             }
         }
         
-        private void drawVisibleSeries(Graphics g) {
+        private void drawVisibleSeries(Graphics g, Vector2D upperLeftValue) {
             for (XY_Series series : allSeries) {
                 if (series.getVisible()) {
-                    drawSeries(g, series);
+                    drawSeries(g, upperLeftValue, series);
                 }
             }
+        }
+        
+        private Vector2D px2val(Vector2D pxVect) {
+            return pxVect.scalarMultiply(1.0 / pxPerValue);
+        }
+        
+        private Vector2D val2px(Vector2D valVect) {
+            return valVect.scalarMultiply(pxPerValue);
         }
         
         @Override
@@ -201,7 +226,67 @@ public class XY_Chart extends javax.swing.JPanel {
                 return;
             }
             
-            drawVisibleSeries(g);
+            Vector2D upperLeftValue = upperLeftLocation;
+            if (dragVectorPx != null) {
+                upperLeftValue = upperLeftLocation.subtract(px2val(dragVectorPx));
+            }
+            drawVisibleSeries(g, upperLeftValue);
+        }
+
+        @Override
+        public void onSampleClicked(int absSample, boolean isPanClick) {
+        }
+
+        @Override
+        public void onLeftClicked(MouseEvent e) {
+        }
+
+        @Override
+        public void onMiddleClicked(MouseEvent e) {
+        }
+
+        @Override
+        public void onRightClicked(MouseEvent e) {
+        }
+
+        @Override
+        public void onDragStarted(int startAbsSample) {
+        }
+
+        @Override
+        public void onDragStarted(MouseEvent e) {
+            if (e.getButton() == MouseEvent.BUTTON2) {
+                panOnDrag = true;
+            }
+        }
+
+        @Override
+        public void onDragging(int startAbsSample, int currAbsSample) {
+        }
+
+        @Override
+        public void onDragging(MouseEvent e1, MouseEvent e2) {
+            if (panOnDrag) {
+                Vector2D v2 = VectorUtils.toVector(e2);
+                Vector2D v1 = VectorUtils.toVector(e1);
+                dragVectorPx = v2.subtract(v1);
+                
+                repaint();
+            }
+        }
+
+        @Override
+        public void onDragComplete(int startAbsSample, int stopAbsSample) {
+        }
+
+        @Override
+        public void onDragComplete(MouseEvent e1, MouseEvent e2) {
+            // Apply pan to chart's location
+            if (panOnDrag && dragVectorPx != null) {
+                upperLeftLocation = upperLeftLocation.subtract(px2val(dragVectorPx));
+            }
+            dragVectorPx = null;
+            panOnDrag = false;
         }
         
     }

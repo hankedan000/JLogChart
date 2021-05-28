@@ -66,6 +66,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      */
     private static final int DRAG_STATE_DRAGGING = 2;
     private int dragState = DRAG_STATE_IDLE;
+    private MouseEvent mEvt1 = null;
+    private MouseEvent mEvt2 = null;
     private int selectionAbsSamp1 = 0;
     private int selectionAbsSamp2 = 0;
     
@@ -379,6 +381,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
             }
             if (e.getButton() == MouseEvent.BUTTON1) {
                 cvl.onLeftClicked(e);
+            } else if (e.getButton() == MouseEvent.BUTTON2) {
+                cvl.onMiddleClicked(e);
             } else if (e.getButton() == MouseEvent.BUTTON3) {
                 cvl.onRightClicked(e);
             }
@@ -388,6 +392,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
     @Override
     public void mousePressed(MouseEvent e) {
         if (dragState == DRAG_STATE_IDLE) {
+            mEvt1 = e;
             selectionAbsSamp1 = getNearestAbsSampleIdx(e.getX());
             dragState = DRAG_STATE_PRESSED;
         }
@@ -396,6 +401,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
     @Override
     public void mouseReleased(MouseEvent e) {
         if (dragState == DRAG_STATE_DRAGGING) {
+            mEvt2 = e;
             selectionAbsSamp2 = getNearestAbsSampleIdx(e.getX());
             
             // Notify any listeners of the drag complete event
@@ -404,6 +410,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
                     continue;
                 }
 
+                cvl.onDragComplete(mEvt1, mEvt2);
                 cvl.onDragComplete(selectionAbsSamp1, selectionAbsSamp2);
             }
         }
@@ -428,6 +435,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
             dragState = DRAG_STATE_DRAGGING;
             // Note: selectionSamp1 was assigned in the mousePressed handler
         } else {
+            mEvt2 = e;
             selectionAbsSamp2 = getNearestAbsSampleIdx(e.getX());
         }
         
@@ -438,8 +446,10 @@ public class ChartView extends JPanel implements MouseWheelListener,
             }
 
             if (startedDrag) {
+                cvl.onDragStarted(mEvt1);
                 cvl.onDragStarted(selectionAbsSamp1);
             } else {
+                cvl.onDragging(mEvt1, mEvt2);
                 cvl.onDragging(selectionAbsSamp1, selectionAbsSamp2);
             }
         }

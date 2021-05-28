@@ -5,6 +5,7 @@
  */
 package com.hankedan.jlogchart.util;
 
+import java.awt.event.MouseEvent;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
 /**
@@ -14,6 +15,10 @@ import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 public class VectorUtils {
     public static final Vector2D MAX_VALUE = new Vector2D(Double.MAX_VALUE, Double.MAX_VALUE); 
     public static final Vector2D MIN_VALUE = new Vector2D(-Double.MAX_VALUE, -Double.MAX_VALUE);
+    
+    public static Vector2D toVector(MouseEvent e) {
+        return new Vector2D(e.getX(),e.getY());
+    }
     
     public static Vector2D min(Vector2D a, Vector2D b) {
         return new Vector2D(
