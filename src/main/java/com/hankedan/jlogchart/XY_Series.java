@@ -84,4 +84,13 @@ public class XY_Series extends Series {
     public List<Vector2D> getData() {
         return Collections.unmodifiableList(data);
     }
+
+    @Override
+    public int size() {
+        if (data == null) {
+            return 0;
+        } else {
+            return data.size();
+        }
+    }
 }

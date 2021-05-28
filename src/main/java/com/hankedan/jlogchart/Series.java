@@ -14,7 +14,7 @@ import java.util.logging.Logger;
  *
  * @author daniel
  */
-public class Series {
+public abstract class Series {
     public interface SeriesChangeListener {
         public void seriesSubTitleChanged(String seriesName, String oldSubTitle, String newSubTitle);
         public void seriesVisibilityChanged(String seriesName, boolean visible);
@@ -117,4 +117,6 @@ public class Series {
         int colorIdx = idx % SERIES_COLOR_PALETTE.length;
         return SERIES_COLOR_PALETTE[colorIdx];
     }
+    
+    public abstract int size();
 }

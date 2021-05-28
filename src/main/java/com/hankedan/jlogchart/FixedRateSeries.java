@@ -64,6 +64,15 @@ public class FixedRateSeries extends Series {
     public List<Double> getData() {
         return Collections.unmodifiableList(data);
     }
+
+    @Override
+        public int size() {
+            if (data == null) {
+                return 0;
+            } else {
+                return data.size();
+            }
+    }
     
     /**
      * Getter for sample value, given an absolute sample index. This method

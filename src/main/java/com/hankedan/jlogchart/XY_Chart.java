@@ -18,7 +18,9 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFrame;
@@ -35,6 +37,9 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
     
     // Map of all added chart series data vectors
     private final List<XY_Series> allSeries = new ArrayList<>();
+    
+    private final List<Marker> floatingMarkers = new ArrayList();
+    private final Map<String,List<SeriesBoundMarker>> sbmBySeriesName = new HashMap<>();
 
     //                      MarginalBoundingBox
     //    +-----------------------------------------------------+
@@ -118,6 +123,20 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         return series;
     }
     
+    public void removeSeries(String seriesName) {
+        Series s = getSeriesByName(seriesName);
+        if (s != null) {
+            allSeries.remove(s);
+            
+            // Remove any markers that were bound to this series
+            sbmBySeriesName.remove(seriesName);
+        }
+        
+        // TODO handle view bounds resizing
+        
+        repaint();
+    }
+    
     /**
      * @return
      * An immutable list of all the FixedRateSeries that are added to the chart
@@ -146,6 +165,39 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             logger.log(Level.WARNING,
                     "Unknown series {0}. Ignoring.",
                     name);
+        }
+    }
+
+    public boolean hasSeries(String name) {
+        return getSeriesByName(name) != null;
+    }
+    
+    public void addMarker(Marker m) {
+        floatingMarkers.add(m);
+        repaint();
+    }
+    
+    public void removeMarker(Marker m) {
+        floatingMarkers.remove(m);
+        repaint();
+    }
+    
+    public void addSeriesBoundMarker(SeriesBoundMarker sbm) {
+        String seriesName = sbm.getSeries().name;
+        if (hasSeries(seriesName)) {
+            List<SeriesBoundMarker> sbmList = null;
+            if (sbmBySeriesName.containsKey(seriesName)) {
+                sbmList = sbmBySeriesName.get(seriesName);
+            } else {
+                sbmList = new ArrayList();
+                sbmBySeriesName.put(seriesName, sbmList);
+            }
+            sbmList.add(sbm);
+            repaint();
+        } else {
+            logger.log(Level.WARNING,
+                    "Attempted to add a SeriesBoundMarker for a series this chart doesn't have. seriesName = {0}",
+                    new Object[]{seriesName});
         }
     }
 
@@ -249,6 +301,29 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             }
         }
         
+        private void drawMarker(Graphics g, Vector2D upperLeftValue, Marker m) {
+            m.paintMarker(g, upperLeftValue, pxPerValue);
+        }
+        
+        private void drawSeriesBoundMarkers(Graphics g, Vector2D upperLeftValue) {
+            for (List<SeriesBoundMarker> sbmList : sbmBySeriesName.values()) {
+                for (SeriesBoundMarker sbm : sbmList) {
+                    if (sbm.getSeries().getVisible()) {
+                        drawMarker(g, upperLeftValue, sbm.getMarker());
+                    } else {
+                        // don't display if the series is not visible
+                        break;
+                    }
+                }
+            }
+        }
+        
+        private void drawFloatingMarkers(Graphics g, Vector2D upperLeftValue) {
+            for (Marker m : floatingMarkers) {
+                drawMarker(g, upperLeftValue, m);
+            }
+        }
+        
         private Vector2D px2val(Vector2D pxVect) {
             return pxVect.scalarMultiply(1.0 / pxPerValue);
         }
@@ -256,7 +331,6 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         private Vector2D val2px(Vector2D valVect) {
             return valVect.scalarMultiply(pxPerValue);
         }
-        
 
         /**
          * Zooms the visible portion of the chart and redraws
@@ -319,6 +393,9 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
                 upperLeftValue = upperLeftLocation.subtract(px2val(dragVectorPx));
             }
             drawVisibleSeries(g, upperLeftValue);
+            
+            drawSeriesBoundMarkers(g, upperLeftValue);
+            drawFloatingMarkers(g, upperLeftValue);
         }
 
         @Override
@@ -404,14 +481,17 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
                 int N_SAMPS = 50;
                 double radPerSamp = Math.PI * 2 / (N_SAMPS - 1);
                 List<Vector2D> circData = new ArrayList();
-                List<Vector2D> ellipseData = new ArrayList();
+                List<Vector2D> ovalData = new ArrayList();
                 for (int i=0; i<N_SAMPS; i++) {
                     double angle = i * radPerSamp;
                     circData.add(new Vector2D(Math.cos(angle), Math.sin(angle)));
-                    ellipseData.add(new Vector2D(1.0 + 0.5 * Math.cos(angle), 0.75 * Math.sin(angle)));
+                    ovalData.add(new Vector2D(1.0 + 0.5 * Math.cos(angle), 0.75 * Math.sin(angle)));
                 }
-                chart.addSeries("circle", circData);
-                chart.addSeries("ellipse", ellipseData).setBolded(true);
+                Series circSeries = chart.addSeries("circle", circData);
+                Series ovalSeries = chart.addSeries("oval", ovalData).setBolded(true);
+                
+                SeriesBoundMarker sbm = new SeriesBoundMarker(circSeries, new DotMarker(5));
+                chart.addSeriesBoundMarker(sbm);
                 
                 // Show the GUI
                 frame.pack();
