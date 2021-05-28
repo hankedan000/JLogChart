@@ -28,7 +28,7 @@ import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
  *
  * @author daniel
  */
-public class XY_Chart extends javax.swing.JPanel {
+public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeListener {
     private final Logger logger = Logger.getLogger(XY_Chart.class.getName());
     
     private final XY_ChartView view = new XY_ChartView();
@@ -94,6 +94,7 @@ public class XY_Chart extends javax.swing.JPanel {
         } else {
             Color color = Series.getDefaultColor(allSeries.size());
             series = new XY_Series(name, color, data);
+            series.addSeriesListener(this);
             allSeries.add(series);
             
             logger.log(Level.FINE,
@@ -132,6 +133,40 @@ public class XY_Chart extends javax.swing.JPanel {
             }
         }
         return null;
+    }
+
+    public void setSeriesVisible(String name, boolean visible) {
+        XY_Series series = getSeriesByName(name);
+        if (series != null) {
+            // Update and repaint if visibility is changing
+            if (series.getVisible() != visible) {
+                series.setVisible(visible);
+            }
+        } else {
+            logger.log(Level.WARNING,
+                    "Unknown series {0}. Ignoring.",
+                    name);
+        }
+    }
+
+    @Override
+    public void seriesSubTitleChanged(String seriesName, String oldSubTitle, String newSubTitle) {
+        repaint();
+    }
+
+    @Override
+    public void seriesVisibilityChanged(String seriesName, boolean visible) {
+        repaint();
+    }
+
+    @Override
+    public void seriesBoldnessChanged(String seriesName, boolean bold) {
+        repaint();
+    }
+
+    @Override
+    public void seriesColorChanged(String seriesName, Color oldColor, Color newColor) {
+        repaint();
     }
     
     private class XY_ChartView extends ChartView implements ChartViewListener, MouseWheelListener {
