@@ -21,6 +21,9 @@ public class Series {
         public void seriesBoldnessChanged(String seriesName, boolean bold);
         public void seriesColorChanged(String seriesName, Color oldColor, Color newColor);
     }
+    
+    public static final int NORMAL_THICKNESS = 1;
+    public static final int BOLD_THICKNESS = 3;
 
     public static final Color[] SERIES_COLOR_PALETTE = {
         Color.RED,

@@ -33,9 +33,6 @@ import javax.swing.JFrame;
 public class JLogChart extends javax.swing.JPanel implements 
         FixedRateSeries.FixedRateSeriesChangeListener, Series.SeriesChangeListener {
     private final Logger logger = Logger.getLogger(JLogChart.class.getName());
-    
-    public static final int NORMAL_THICKNESS = 1;
-    public static final int BOLD_THICKNESS = 3;
 
     private final JLogChartView view = new JLogChartView();
 
@@ -457,9 +454,9 @@ public class JLogChart extends javax.swing.JPanel implements
             Graphics2D g2 = (Graphics2D)g;
             g2.setColor(series.getColor());
             if (series.isBolded()) {
-                g2.setStroke(new BasicStroke(BOLD_THICKNESS));
+                g2.setStroke(new BasicStroke(Series.BOLD_THICKNESS));
             } else {
-                g2.setStroke(new BasicStroke(NORMAL_THICKNESS));
+                g2.setStroke(new BasicStroke(Series.NORMAL_THICKNESS));
             }
 
             // Compute x-axis scaling factor

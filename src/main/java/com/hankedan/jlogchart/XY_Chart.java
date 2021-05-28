@@ -7,10 +7,12 @@ package com.hankedan.jlogchart;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.hankedan.jlogchart.util.VectorUtils;
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -175,7 +177,13 @@ public class XY_Chart extends javax.swing.JPanel {
                 return;
             }
             
-            g.setColor(series.getColor());
+            Graphics2D g2 = (Graphics2D)g;
+            g2.setColor(series.getColor());
+            if (series.isBolded()) {
+                g2.setStroke(new BasicStroke(Series.BOLD_THICKNESS));
+            } else {
+                g2.setStroke(new BasicStroke(Series.NORMAL_THICKNESS));
+            }
             
             Vector2D prevOffsetPx = null;
             for (Vector2D p : series.getData()) {
@@ -309,12 +317,14 @@ public class XY_Chart extends javax.swing.JPanel {
                 int N_SAMPS = 50;
                 double radPerSamp = Math.PI * 2 / (N_SAMPS - 1);
                 List<Vector2D> circData = new ArrayList();
+                List<Vector2D> ellipseData = new ArrayList();
                 for (int i=0; i<N_SAMPS; i++) {
                     double angle = i * radPerSamp;
                     circData.add(new Vector2D(Math.cos(angle), Math.sin(angle)));
+                    ellipseData.add(new Vector2D(1.0 + 0.5 * Math.cos(angle), 0.75 * Math.sin(angle)));
                 }
                 chart.addSeries("circle", circData);
-                chart.setVisible(true);
+                chart.addSeries("ellipse", ellipseData).setBolded(true);
                 
                 // Show the GUI
                 frame.pack();
