@@ -36,7 +36,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
     private final XY_ChartView view = new XY_ChartView();
     
     // Map of all added chart series data vectors
-    private final List<XY_Series> allSeries = new ArrayList<>();
+    private final List<Series<Vector2D>> allSeries = new ArrayList<>();
     
     private final List<Marker> floatingMarkers = new ArrayList();
     private final Map<String,List<SeriesBoundMarker>> sbmBySeriesName = new HashMap<>();
@@ -89,8 +89,8 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         return view;
     }
     
-    public XY_Series addSeries(String name, List<Vector2D> data) {
-        XY_Series series = getSeriesByName(name);
+    public Series<Vector2D> addSeries(String name, List<Vector2D> data) {
+        Series series = getSeriesByName(name);
         
         if (series != null) {
             logger.log(Level.WARNING,
@@ -98,7 +98,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
                     new Object[]{name});
         } else {
             Color color = Series.getDefaultColor(allSeries.size());
-            series = new XY_Series(name, color, data);
+            series = new Series<Vector2D>(name, color, data);
             series.addSeriesListener(this);
             allSeries.add(series);
             
@@ -106,12 +106,12 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
                     "name = {2}; series.minValue = {0}; series.maxValue = {1}; ",
                     new Object[]{series.minValue(),series.maxValue(),name});
             if (allSeries.size() == 1) {
-                minBounds = series.minValue();
-                maxBounds = series.maxValue();
+                minBounds = (Vector2D)series.minValue();
+                maxBounds = (Vector2D)series.maxValue();
                 upperLeftLocation = minBounds;
             } else {
-                minBounds = VectorUtils.min(minBounds, series.minValue());
-                maxBounds = VectorUtils.max(maxBounds, series.maxValue());
+                minBounds = VectorUtils.min(minBounds, (Vector2D)series.minValue());
+                maxBounds = VectorUtils.max(maxBounds, (Vector2D)series.maxValue());
             }
             logger.log(Level.FINE,
                     "minBounds = {0}; maxBounds = {1}; ",
@@ -141,12 +141,12 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
      * @return
      * An immutable list of all the FixedRateSeries that are added to the chart
      */
-    public List<XY_Series> getAllSeries() {
+    public List<Series<Vector2D>> getAllSeries() {
         return Collections.unmodifiableList(allSeries);
     }
     
-    public XY_Series getSeriesByName(String name) {
-        for (XY_Series series : allSeries) {
+    public Series<Vector2D> getSeriesByName(String name) {
+        for (Series series : allSeries) {
             if (series.name.compareTo(name) == 0) {
                 return series;
             }
@@ -155,7 +155,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
     }
 
     public void setSeriesVisible(String name, boolean visible) {
-        XY_Series series = getSeriesByName(name);
+        Series series = getSeriesByName(name);
         if (series != null) {
             // Update and repaint if visibility is changing
             if (series.getVisible() != visible) {
@@ -220,6 +220,14 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
     public void seriesColorChanged(String seriesName, Color oldColor, Color newColor) {
         repaint();
     }
+
+    @Override
+    public void seriesDataChanged(String seriesName) {
+    }
+
+    @Override
+    public void seriesOffsetChanged(String seriesName, int oldOffset, int newOffset) {
+    }
     
     private class XY_ChartView extends ChartView implements ChartViewListener, MouseWheelListener {
         /**
@@ -265,7 +273,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             Vector2D maxSqBounds = middle.add(halfSqDiag);
         }
 
-        private void drawSeries(Graphics g, Vector2D upperLeftValue, XY_Series series) {
+        private void drawSeries(Graphics g, Vector2D upperLeftValue, Series<Vector2D> series) {
             if (series.getData() == null) {
                 return;
             }
@@ -294,7 +302,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         }
         
         private void drawVisibleSeries(Graphics g, Vector2D upperLeftValue) {
-            for (XY_Series series : allSeries) {
+            for (Series series : allSeries) {
                 if (series.getVisible()) {
                     drawSeries(g, upperLeftValue, series);
                 }

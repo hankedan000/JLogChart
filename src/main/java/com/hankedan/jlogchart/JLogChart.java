@@ -31,7 +31,7 @@ import javax.swing.JFrame;
  * @author daniel
  */
 public class JLogChart extends javax.swing.JPanel implements 
-        FixedRateSeries.FixedRateSeriesChangeListener, Series.SeriesChangeListener {
+        Series.SeriesChangeListener {
     private final Logger logger = Logger.getLogger(JLogChart.class.getName());
 
     private final JLogChartView view = new JLogChartView();
@@ -55,7 +55,7 @@ public class JLogChart extends javax.swing.JPanel implements
     private final BoundedRangeModel xRange;
 
     // Map of all added chart series data vectors
-    private final List<FixedRateSeries> allSeries = new ArrayList<>();
+    private final List<Series<Double>> allSeries = new ArrayList<>();
 
     public JLogChart() {
         initComponents();
@@ -127,7 +127,7 @@ public class JLogChart extends javax.swing.JPanel implements
     }
 
     public void setSeriesVisible(String name, boolean visible) {
-        FixedRateSeries series = getSeriesByName(name);
+        Series series = getSeriesByName(name);
         if (series != null) {
             // Update and repaint if visibility is changing
             if (series.getVisible() != visible) {
@@ -140,8 +140,8 @@ public class JLogChart extends javax.swing.JPanel implements
         }
     }
     
-    public FixedRateSeries addSeries(String name, List<Double> data) {
-        FixedRateSeries series = getSeriesByName(name);
+    public Series<Double> addSeries(String name, List<Double> data) {
+        Series<Double> series = getSeriesByName(name);
         
         if (series != null) {
             logger.log(Level.WARNING,
@@ -149,7 +149,7 @@ public class JLogChart extends javax.swing.JPanel implements
                     new Object[]{name});
         } else {
             Color color = Series.getDefaultColor(allSeries.size());
-            series = new FixedRateSeries(name, color, data);
+            series = new Series(name, color, data);
             allSeries.add(series);
             minValueY = Double.min(minValueY, series.minValue());
             maxValueY = Double.max(maxValueY, series.maxValue());
@@ -165,7 +165,6 @@ public class JLogChart extends javax.swing.JPanel implements
             view.setX_RangeMax(newX_Max);
             view.setHorzViewBounds(newLeftViewedSamp, newRightViewedSamp);
             series.addSeriesListener(this);
-            series.addFixedRateSeriesListener(this);
             logger.log(Level.FINE,
                     "leftViewedSamp = {0}; rightViewedSamp = {1};",
                     new Object[]{view.leftViewedSamp(),view.rightViewedSamp()});
@@ -178,7 +177,7 @@ public class JLogChart extends javax.swing.JPanel implements
     public void removeSeries(String name) {
         int idxToRemove = -1;
         for (int i=0; i<allSeries.size(); i++) {
-            FixedRateSeries series = allSeries.get(i);
+            Series series = allSeries.get(i);
             if (series.name.compareTo(name) == 0) {
                 idxToRemove = i;
             }
@@ -201,12 +200,12 @@ public class JLogChart extends javax.swing.JPanel implements
      * @return
      * An immutable list of all the FixedRateSeries that are added to the chart
      */
-    public List<FixedRateSeries> getAllSeries() {
+    public List<Series<Double>> getAllSeries() {
         return Collections.unmodifiableList(allSeries);
     }
     
-    public FixedRateSeries getSeriesByName(String name) {
-        for (FixedRateSeries series : allSeries) {
+    public Series<Double> getSeriesByName(String name) {
+        for (Series series : allSeries) {
             if (series.name.compareTo(name) == 0) {
                 return series;
             }
@@ -227,11 +226,11 @@ public class JLogChart extends javax.swing.JPanel implements
         int newMaxX = Integer.MIN_VALUE;
         double newMinValueY = Double.POSITIVE_INFINITY;
         double newMaxValueY = Double.NEGATIVE_INFINITY;
-        for (FixedRateSeries series : allSeries) {
+        for (Series series : allSeries) {
             newMinX = Integer.min(newMinX, series.getOffset());
             newMaxX = Integer.max(newMaxX, series.getOffset() + series.getData().size());
-            newMinValueY = Double.min(newMinValueY, series.minValue());
-            newMaxValueY = Double.max(newMaxValueY, series.maxValue());
+            newMinValueY = Double.min(newMinValueY, (double)series.minValue());
+            newMaxValueY = Double.max(newMaxValueY, (double)series.maxValue());
         }
 
         // Update single scale min/max values
@@ -446,7 +445,7 @@ public class JLogChart extends javax.swing.JPanel implements
             g.drawLine(x2, 0, x2, getHeight());
         }
 
-        private void drawSeries(Graphics g, FixedRateSeries series, BoundedRangeModel brm) {
+        private void drawSeries(Graphics g, Series<Double> series, BoundedRangeModel brm) {
             if (series.getData() == null) {
                 return;
             }
@@ -514,7 +513,7 @@ public class JLogChart extends javax.swing.JPanel implements
         }
 
         private void drawVisibleSeries(Graphics g, BoundedRangeModel brm) {
-            for (FixedRateSeries series : allSeries) {
+            for (Series series : allSeries) {
                 if (series.getVisible()) {
                     drawSeries(g, series, brm);
                 }
@@ -545,7 +544,7 @@ public class JLogChart extends javax.swing.JPanel implements
             LabelGroup maxGroup = new LabelGroup();
             LabelGroup minGroup = new LabelGroup();
             for (int i=0; i<allSeries.size(); i++) {
-                FixedRateSeries series = allSeries.get(i);
+                Series series = allSeries.get(i);
 
                 int yOffset = textHeight * (i+1) + TEXT_SEPERATION * i;
 

@@ -5,6 +5,8 @@
  */
 package com.hankedan.jlogchart;
 
+import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
+
 /**
  *
  * @author daniel
@@ -36,13 +38,11 @@ public class SeriesBoundMarker {
         }
         offset = newOffset;
         
-        if (s instanceof FixedRateSeries) {
-            FixedRateSeries frs = (FixedRateSeries)s;
-            double val = frs.getData().get(offset);
-            m.setPosition(val, val);
-        } else if (s instanceof XY_Series) {
-            XY_Series xys = (XY_Series)s;
-            m.setPosition(xys.getData().get(offset));
+        Object val = s.getData().get(offset);
+        if (val instanceof Double) {
+            m.setPosition((double)val, (double)val);
+        } else if (val instanceof Vector2D) {
+            m.setPosition((Vector2D)val);
         } else {
             throw new UnsupportedOperationException("Unknown series class type " + s.getClass().getName());
         }
