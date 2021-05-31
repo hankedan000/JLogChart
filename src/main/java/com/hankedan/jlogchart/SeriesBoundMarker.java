@@ -5,6 +5,9 @@
  */
 package com.hankedan.jlogchart;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.apache.commons.math3.exception.OutOfRangeException;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
 /**
@@ -12,6 +15,7 @@ import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
  * @author daniel
  */
 public class SeriesBoundMarker {
+    private final Logger logger = Logger.getLogger(SeriesBoundMarker.class.getName());
     private final Series s;
     private final Marker m;
     private int offset;
@@ -30,7 +34,7 @@ public class SeriesBoundMarker {
         return s;
     }
     
-    public void setOffset(int newOffset) {
+    public SeriesBoundMarker setOffset(int newOffset) {
         if (newOffset < 0) {
             newOffset = 0;
         } if (newOffset >= s.size()) {
@@ -38,7 +42,24 @@ public class SeriesBoundMarker {
         }
         offset = newOffset;
         
-        Object val = s.getData().get(offset);
+        return updatePosition();
+    }
+    
+    public int getOffset() {
+        return offset;
+    }
+    
+    public SeriesBoundMarker updatePosition() {
+        Object val;
+        try {
+            val = s.getAbsSampleValue(offset);
+        } catch (OutOfRangeException e) {
+            if (offset < (int)e.getLo()) {
+                val = s.getAbsSampleValue((int)e.getLo());
+            } else {
+                val = s.getAbsSampleValue((int)e.getHi());
+            }
+        }
         if (val instanceof Double) {
             m.setPosition((double)val, (double)val);
         } else if (val instanceof Vector2D) {
@@ -46,9 +67,6 @@ public class SeriesBoundMarker {
         } else {
             throw new UnsupportedOperationException("Unknown series class type " + s.getClass().getName());
         }
-    }
-    
-    public int getOffset() {
-        return offset;
+        return this;
     }
 }

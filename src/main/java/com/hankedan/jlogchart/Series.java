@@ -10,10 +10,10 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.math3.exception.OutOfRangeException;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
-import org.w3c.dom.ranges.RangeException;
 
 /**
  *
@@ -207,10 +207,12 @@ public class Series<T> {
     public T getAbsSampleValue(int absSampleIdx) {
         int relSampleIdx = getRelSampleIdx(absSampleIdx);
         if (relSampleIdx < 0) {
-            throw new OutOfRangeException(relSampleIdx, 0, this.data.size());
+            throw new OutOfRangeException(absSampleIdx, offset, this.data.size() + offset);
         } else if (relSampleIdx >= this.data.size()) {
-            throw new OutOfRangeException(relSampleIdx, 0, this.data.size());
+            throw new OutOfRangeException(absSampleIdx, offset, this.data.size() + offset - 1);
         } else {
+            logger.log(Level.FINER,"absSampleIdx = {0}; relSampleIdx = {1}; ",
+                    new Object[]{absSampleIdx,relSampleIdx});
             return this.data.get(relSampleIdx);
         }
     }

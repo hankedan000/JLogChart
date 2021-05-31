@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFrame;
+import org.apache.commons.math3.exception.OutOfRangeException;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
 /**
@@ -223,10 +224,19 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
 
     @Override
     public void seriesDataChanged(String seriesName) {
+        repaint();
     }
 
     @Override
     public void seriesOffsetChanged(String seriesName, int oldOffset, int newOffset) {
+        // All SeriesBoundMarkers need their drawn positions updated
+        if (sbmBySeriesName.containsKey(seriesName)) {
+            for (SeriesBoundMarker sbm : sbmBySeriesName.get(seriesName)) {
+                sbm.updatePosition();
+            }
+        }
+        
+        repaint();
     }
     
     private class XY_ChartView extends ChartView implements ChartViewListener, MouseWheelListener {
@@ -500,6 +510,25 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
                 
                 SeriesBoundMarker sbm = new SeriesBoundMarker(circSeries, new DotMarker(5));
                 chart.addSeriesBoundMarker(sbm);
+                
+                Thread t = new Thread(new Runnable() {
+                    Logger logger = Logger.getLogger("Thread");
+                    int offset = 0;
+                    @Override
+                    public void run() {
+                        while (true) {
+                            circSeries.setOffset(offset);
+                            frame.repaint();
+                            offset--;
+                            try {
+                                Thread.sleep(500, 0);
+                            } catch (InterruptedException ex) {
+                                Logger.getLogger(XY_Chart.class.getName()).log(Level.SEVERE, null, ex);
+                            }
+                        }
+                    }
+                });
+                t.start();
                 
                 // Show the GUI
                 frame.pack();
