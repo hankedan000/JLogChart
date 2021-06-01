@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoundedRangeModel;
+import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.JPanel;
 
 /**
@@ -35,8 +36,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * minimum -> always zero
      * maximum -> the maximum number of samples across all series
      */
-    protected final BoundedRangeModelDouble xRange = new BoundedRangeModelDouble();
-    protected final BoundedRangeModelDouble yRange = new BoundedRangeModelDouble();
+    protected final BoundedRangeModel xRange = new DefaultBoundedRangeModel();
+    protected final BoundedRangeModel yRange = new DefaultBoundedRangeModel();
 
     // Set to true if the mouse is hovering over the chart
     private boolean mouseFocused = false;
@@ -65,6 +66,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      */
     private static final int DRAG_STATE_DRAGGING = 2;
     private int dragState = DRAG_STATE_IDLE;
+    private MouseEvent mEvt1 = null;
+    private MouseEvent mEvt2 = null;
     private int selectionAbsSamp1 = 0;
     private int selectionAbsSamp2 = 0;
     
@@ -271,8 +274,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * The x pixel location to center the zoom around
      * @param amount 
      * Amount to zoom by. Valid range is 0.0 to 1.0.
-     *   1.0 -> new visible portion is 0% of current visible portion
-     *   0.0 -> new visible portion is 100% of current visible portion
+     *   1.0 -> new visible portion is 0% times current visible portion
+     *   0.0 -> new visible portion is 100% times current visible portion
      */
     protected void zoomX(boolean zoomIn, int center, double amount) {
         zoom1D(zoomIn,center,getWidth(),amount,xRange);
@@ -286,8 +289,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * The y pixel location to center the zoom around
      * @param amount 
      * Amount to zoom by. Valid range is 0.0 to 1.0.
-     *   1.0 -> new visible portion is 0% of current visible portion
-     *   0.0 -> new visible portion is 100% of current visible portion
+     *   1.0 -> new visible portion is 0% times current visible portion
+     *   0.0 -> new visible portion is 100% times current visible portion
      */
     protected void zoomY(boolean zoomIn, int center, double amount) {
         zoom1D(zoomIn,center,getHeight(),amount,yRange);
@@ -304,8 +307,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * width in pixels. If zooming vertically, pass in the view width in pixels.
      * @param amount 
      * Amount to zoom by. Valid range is 0.0 to 1.0.
-     *   1.0 -> new visible portion is 0% of current visible portion
-     *   0.0 -> new visible portion is 100% of current visible portion
+     *   1.0 -> new visible portion is 0% times current visible portion
+     *   0.0 -> new visible portion is 100% times current visible portion
      * @param brm
      * The range to perform the zoom on
      */
@@ -378,6 +381,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
             }
             if (e.getButton() == MouseEvent.BUTTON1) {
                 cvl.onLeftClicked(e);
+            } else if (e.getButton() == MouseEvent.BUTTON2) {
+                cvl.onMiddleClicked(e);
             } else if (e.getButton() == MouseEvent.BUTTON3) {
                 cvl.onRightClicked(e);
             }
@@ -387,6 +392,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
     @Override
     public void mousePressed(MouseEvent e) {
         if (dragState == DRAG_STATE_IDLE) {
+            mEvt1 = e;
             selectionAbsSamp1 = getNearestAbsSampleIdx(e.getX());
             dragState = DRAG_STATE_PRESSED;
         }
@@ -395,6 +401,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
     @Override
     public void mouseReleased(MouseEvent e) {
         if (dragState == DRAG_STATE_DRAGGING) {
+            mEvt2 = e;
             selectionAbsSamp2 = getNearestAbsSampleIdx(e.getX());
             
             // Notify any listeners of the drag complete event
@@ -403,6 +410,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
                     continue;
                 }
 
+                cvl.onDragComplete(mEvt1, mEvt2);
                 cvl.onDragComplete(selectionAbsSamp1, selectionAbsSamp2);
             }
         }
@@ -427,6 +435,7 @@ public class ChartView extends JPanel implements MouseWheelListener,
             dragState = DRAG_STATE_DRAGGING;
             // Note: selectionSamp1 was assigned in the mousePressed handler
         } else {
+            mEvt2 = e;
             selectionAbsSamp2 = getNearestAbsSampleIdx(e.getX());
         }
         
@@ -437,8 +446,10 @@ public class ChartView extends JPanel implements MouseWheelListener,
             }
 
             if (startedDrag) {
+                cvl.onDragStarted(mEvt1);
                 cvl.onDragStarted(selectionAbsSamp1);
             } else {
+                cvl.onDragging(mEvt1, mEvt2);
                 cvl.onDragging(selectionAbsSamp1, selectionAbsSamp2);
             }
         }
