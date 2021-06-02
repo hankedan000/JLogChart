@@ -59,25 +59,20 @@ public class DotMarker extends Marker {
         return this;
     }
     
-    public Color getStrokel() {
+    public Color getStroke() {
         return this.stroke;
     }
 
     @Override
-    protected void paintMarker(Graphics g) {
-        paintMarker(g, Vector2D.ZERO, 1.0);
-    }
-
-    @Override
-    protected void paintMarker(Graphics g, Vector2D viewOrigin, double pxScale) {
+    protected void paintMarker(Graphics g, Vector2D viewOrigin, Vector2D pxScale) {
         Vector2D offsetPos = pos.subtract(viewOrigin);
         g.setColor(fill);
         g.fillOval(
-                (int)(offsetPos.getX() * pxScale - radius),(int)(offsetPos.getY() * pxScale - radius),
+                (int)(offsetPos.getX() * pxScale.getX() - radius),(int)(offsetPos.getY() * pxScale.getY() - radius),
                 (int)(radius * 2), (int)(radius * 2));
         g.setColor(stroke);
         g.drawOval(
-                (int)(offsetPos.getX() * pxScale - radius),(int)(offsetPos.getY() * pxScale - radius),
+                (int)(offsetPos.getX() * pxScale.getX() - radius),(int)(offsetPos.getY() * pxScale.getY() - radius),
                 (int)(radius * 2), (int)(radius * 2));
         
         if (isHoverable()) {

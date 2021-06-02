@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFrame;
-import org.apache.commons.math3.exception.OutOfRangeException;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
 /**
@@ -320,7 +319,8 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         }
         
         private void drawMarker(Graphics g, Vector2D upperLeftValue, Marker m) {
-            m.paintMarker(g, upperLeftValue, pxPerValue);
+            Vector2D pxScale = new Vector2D(pxPerValue,pxPerValue);
+            m.paintMarker(g, upperLeftValue, pxScale);
         }
         
         private void drawSeriesBoundMarkers(Graphics g, Vector2D upperLeftValue) {

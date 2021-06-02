@@ -62,7 +62,7 @@ public class SeriesBoundMarker {
             }
         }
         if (val instanceof Double) {
-            m.setPosition((double)val, (double)val);
+            m.setPosition((double)absOffset, (double)val);
         } else if (val instanceof Vector2D) {
             m.setPosition((Vector2D)val);
         } else {

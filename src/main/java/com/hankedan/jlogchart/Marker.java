@@ -66,17 +66,17 @@ public abstract class Marker {
         return this.pos.getY();
     }
     
-    protected void paintHoverText(Graphics g, Vector2D viewOrigin, double pxScale, Vector2D textOffset) {
-        Vector2D paintPos = pos.subtract(viewOrigin)
-                .scalarMultiply(pxScale)
-                .add(textOffset);
+    protected void paintHoverText(Graphics g, Vector2D viewOrigin, Vector2D pxScale, Vector2D textOffset) {
+        Vector2D paintPos = pos.subtract(viewOrigin).add(textOffset);
+        paintPos = new Vector2D(paintPos.getX() * pxScale.getX(), paintPos.getY() * pxScale.getY());
         g.setColor(Color.BLACK);
         g.drawString(hoverText, (int)paintPos.getX(), (int)paintPos.getY());
     }
     
-    abstract
-    protected void paintMarker(Graphics g);
+    protected void paintMarker(Graphics g) {
+        paintMarker(g, Vector2D.ZERO, new Vector2D(1,1));
+    }
     
     abstract 
-    protected void paintMarker(Graphics g, Vector2D viewOrigin, double pxScale);
+    protected void paintMarker(Graphics g, Vector2D viewOrigin, Vector2D pxScale);
 }
