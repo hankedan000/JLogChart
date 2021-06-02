@@ -5,6 +5,7 @@
  */
 package com.hankedan.jlogchart;
 
+import java.awt.Color;
 import java.awt.Graphics;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
@@ -14,6 +15,9 @@ import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
  */
 public abstract class Marker {
     protected Vector2D pos;
+    
+    private boolean hoverable = false;
+    private String hoverText = "";
     
     public Marker(double x, double y) {
         this(new Vector2D(x,y));
@@ -36,6 +40,24 @@ public abstract class Marker {
         return this.pos;
     }
     
+    public Marker setHoverable(boolean hoverable) {
+        this.hoverable = hoverable;
+        return this;
+    }
+    
+    public boolean isHoverable() {
+        return this.hoverable;
+    }
+    
+    public Marker setHoverText(String text) {
+        this.hoverText = text;
+        return this;
+    }
+    
+    public String getHoverText() {
+        return this.hoverText;
+    }
+    
     public double getX() {
         return this.pos.getX();
     }
@@ -44,9 +66,17 @@ public abstract class Marker {
         return this.pos.getY();
     }
     
+    protected void paintHoverText(Graphics g, Vector2D viewOrigin, double pxScale, Vector2D textOffset) {
+        Vector2D paintPos = pos.subtract(viewOrigin)
+                .scalarMultiply(pxScale)
+                .add(textOffset);
+        g.setColor(Color.BLACK);
+        g.drawString(hoverText, (int)paintPos.getX(), (int)paintPos.getY());
+    }
+    
     abstract
     protected void paintMarker(Graphics g);
     
-    abstract
+    abstract 
     protected void paintMarker(Graphics g, Vector2D viewOrigin, double pxScale);
 }

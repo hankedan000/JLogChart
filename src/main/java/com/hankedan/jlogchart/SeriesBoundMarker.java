@@ -18,12 +18,12 @@ public class SeriesBoundMarker {
     private final Logger logger = Logger.getLogger(SeriesBoundMarker.class.getName());
     private final Series s;
     private final Marker m;
-    private int offset;
+    private int absOffset;
     
     public SeriesBoundMarker(Series s, Marker m) {
         this.s = s;
         this.m = m;
-        setOffset(0);
+        setAbsOffset(0);
     }
     
     public Marker getMarker() {
@@ -34,27 +34,28 @@ public class SeriesBoundMarker {
         return s;
     }
     
-    public SeriesBoundMarker setOffset(int newOffset) {
-        if (newOffset < 0) {
-            newOffset = 0;
-        } if (newOffset >= s.size()) {
-            newOffset = s.size() - 1;
+    public SeriesBoundMarker setAbsOffset(int newOffset) {
+        absOffset = newOffset;
+        
+        boolean DEBUG_OFFSET = false;
+        if (DEBUG_OFFSET) {
+            m.setHoverable(true);
+            m.setHoverText(Integer.toString(absOffset));
         }
-        offset = newOffset;
         
         return updatePosition();
     }
     
-    public int getOffset() {
-        return offset;
+    public int getAbsOffset() {
+        return absOffset;
     }
     
     public SeriesBoundMarker updatePosition() {
         Object val;
         try {
-            val = s.getAbsSampleValue(offset);
+            val = s.getAbsSampleValue(absOffset);
         } catch (OutOfRangeException e) {
-            if (offset < (int)e.getLo()) {
+            if (absOffset < (int)e.getLo()) {
                 val = s.getAbsSampleValue((int)e.getLo());
             } else {
                 val = s.getAbsSampleValue((int)e.getHi());

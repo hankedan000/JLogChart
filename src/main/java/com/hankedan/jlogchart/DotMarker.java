@@ -79,6 +79,10 @@ public class DotMarker extends Marker {
         g.drawOval(
                 (int)(offsetPos.getX() * pxScale - radius),(int)(offsetPos.getY() * pxScale - radius),
                 (int)(radius * 2), (int)(radius * 2));
+        
+        if (isHoverable()) {
+            paintHoverText(g, viewOrigin, pxScale, new Vector2D(radius,-radius));
+        }
     }
     
 }
