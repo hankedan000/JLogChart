@@ -25,6 +25,7 @@ import java.util.logging.Logger;
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.JFrame;
+import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
 /**
  *
@@ -56,6 +57,8 @@ public class JLogChart extends javax.swing.JPanel implements
 
     // Map of all added chart series data vectors
     private final List<Series<Double>> allSeries = new ArrayList<>();
+    
+    private final MarkerManager markerMgr = new MarkerManager();
 
     public JLogChart() {
         initComponents();
@@ -182,6 +185,9 @@ public class JLogChart extends javax.swing.JPanel implements
                 idxToRemove = i;
             }
         }
+            
+        // Remove any markers that were bound to this series
+        markerMgr.removeSeriesMarkers(name);
 
         // Remove the found series
         if (idxToRemove >= 0) {
@@ -211,6 +217,43 @@ public class JLogChart extends javax.swing.JPanel implements
             }
         }
         return null;
+    }
+    
+    public void addMarker(Marker m) {
+        /**
+         * Handle case where adding a LineMarker. LineMarker's require a
+         * reference to the ChartView so that they can draw the line the
+         * full width/height of the panel.
+         */
+        if (m instanceof LineMarker) {
+            LineMarker lm = (LineMarker)m;
+            lm.setView(view);
+        }
+
+        markerMgr.addMarker(m);
+    }
+    
+    public void addSeriesBoundMarker(SeriesBoundMarker sbm) {
+        String seriesName = sbm.getSeries().name;
+        if (hasSeries(seriesName)) {
+            /**
+             * Handle case where adding a LineMarker. LineMarker's require a
+             * reference to the ChartView so that they can draw the line the
+             * full width/height of the panel.
+             */
+            Marker m = sbm.getMarker();
+            if (m instanceof LineMarker) {
+                LineMarker lm = (LineMarker)m;
+                lm.setView(view);
+            }
+
+            markerMgr.addSeriesBoundMarker(sbm);
+            repaint();
+        } else {
+            logger.log(Level.WARNING,
+                    "Attempted to add a SeriesBoundMarker for a series this chart doesn't have. seriesName = {0}",
+                    new Object[]{seriesName});
+        }
     }
     
     /**
@@ -409,6 +452,9 @@ public class JLogChart extends javax.swing.JPanel implements
     public void seriesOffsetChanged(String seriesName, int oldOffset, int newOffset) {
         // Recompute view bounds, scroll bounds, etc with new offset values
         updateAfterDataChange();
+        // Update series bounds markers
+        markerMgr.syncMarkersWithSeriesOffset(seriesName);
+        
         repaint();
         view.updateMiniMapImage();
     }
@@ -511,6 +557,43 @@ public class JLogChart extends javax.swing.JPanel implements
                 relIdx = series.getRelSampleIdx((int)absIdx);
             }
         }
+        
+        private void drawMarker(Graphics g, BoundedRangeModel brm, Marker m) {
+            // Only support horizontal line markers
+            if (m instanceof LineMarker) {
+                LineMarker lm = (LineMarker)m;
+                if (lm.isHorizontal()) {
+                    throw new UnsupportedOperationException("Horizontal LineMarkers are not supported");
+                }
+            } else {
+                throw new UnsupportedOperationException("non-LineMarkers are not supported");
+            }
+            
+            // Compute x-axis scaling factor
+            double pxPerSamp = getPxPerSample(brm);
+            Vector2D pxScale = new Vector2D(pxPerSamp,0);
+            Vector2D upperLeftValue = new Vector2D(brm.getValue(),0);
+            m.paintMarker(g, upperLeftValue, pxScale);
+        }
+        
+        private void drawFloatingMarkers(Graphics g, BoundedRangeModel brm) {
+            for (Marker m : markerMgr.getAllFloatingMarkers()) {
+                drawMarker(g, brm, m);
+            }
+        }
+        
+        private void drawSeriesBoundMarkers(Graphics g, BoundedRangeModel brm) {
+            for (List<SeriesBoundMarker> sbmList : markerMgr.getAllSBMsBySeriesName().values()) {
+                for (SeriesBoundMarker sbm : sbmList) {
+                    if (sbm.getSeries().getVisible()) {
+                        drawMarker(g, brm, sbm.getMarker());
+                    } else {
+                        // don't display if the series is not visible
+                        break;
+                    }
+                }
+            }
+        }
 
         private void drawVisibleSeries(Graphics g, BoundedRangeModel brm) {
             for (Series series : allSeries) {
@@ -608,6 +691,8 @@ public class JLogChart extends javax.swing.JPanel implements
             if (selectedAbsSample != -1) {
                 drawSelectedSample(g);
             }
+            drawSeriesBoundMarkers(g, xRange);
+            drawFloatingMarkers(g, xRange);
 
             // Draw chart overlays
             if (selectionValid) {

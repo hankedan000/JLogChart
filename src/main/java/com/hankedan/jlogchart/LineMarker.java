@@ -18,6 +18,10 @@ public class LineMarker extends Marker {
     private Color color;
     private boolean horzOrientation = false;
     
+    public LineMarker() {
+        super(Vector2D.ZERO);
+    }
+    
     public LineMarker(double x, double y) {
         super(x,y);
     }
@@ -64,6 +68,8 @@ public class LineMarker extends Marker {
         if (this.view == null) {
             return;
         } else if ( ! view.isVisible()) {
+            return;
+        } else if ( ! isVisible()) {
             return;
         }
         

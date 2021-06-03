@@ -38,8 +38,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
     // Map of all added chart series data vectors
     private final List<Series<Vector2D>> allSeries = new ArrayList<>();
     
-    private final List<Marker> floatingMarkers = new ArrayList();
-    private final Map<String,List<SeriesBoundMarker>> sbmBySeriesName = new HashMap<>();
+    private final MarkerManager markerMgr = new MarkerManager();
 
     //                      MarginalBoundingBox
     //    +-----------------------------------------------------+
@@ -129,7 +128,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             allSeries.remove(s);
             
             // Remove any markers that were bound to this series
-            sbmBySeriesName.remove(seriesName);
+            markerMgr.removeSeriesMarkers(seriesName);
         }
         
         // TODO handle view bounds resizing
@@ -173,26 +172,19 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
     }
     
     public void addMarker(Marker m) {
-        floatingMarkers.add(m);
+        markerMgr.addMarker(m);
         repaint();
     }
     
     public void removeMarker(Marker m) {
-        floatingMarkers.remove(m);
+        markerMgr.removeMarker(m);
         repaint();
     }
     
     public void addSeriesBoundMarker(SeriesBoundMarker sbm) {
         String seriesName = sbm.getSeries().name;
         if (hasSeries(seriesName)) {
-            List<SeriesBoundMarker> sbmList = null;
-            if (sbmBySeriesName.containsKey(seriesName)) {
-                sbmList = sbmBySeriesName.get(seriesName);
-            } else {
-                sbmList = new ArrayList();
-                sbmBySeriesName.put(seriesName, sbmList);
-            }
-            sbmList.add(sbm);
+            markerMgr.addSeriesBoundMarker(sbm);
             repaint();
         } else {
             logger.log(Level.WARNING,
@@ -229,11 +221,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
     @Override
     public void seriesOffsetChanged(String seriesName, int oldOffset, int newOffset) {
         // All SeriesBoundMarkers need their drawn positions updated
-        if (sbmBySeriesName.containsKey(seriesName)) {
-            for (SeriesBoundMarker sbm : sbmBySeriesName.get(seriesName)) {
-                sbm.updatePosition();
-            }
-        }
+        markerMgr.syncMarkersWithSeriesOffset(seriesName);
         
         repaint();
     }
@@ -324,9 +312,9 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         }
         
         private void drawSeriesBoundMarkers(Graphics g, Vector2D upperLeftValue) {
-            for (List<SeriesBoundMarker> sbmList : sbmBySeriesName.values()) {
+            for (List<SeriesBoundMarker> sbmList : markerMgr.getAllSBMsBySeriesName().values()) {
                 for (SeriesBoundMarker sbm : sbmList) {
-                    if (sbm.getSeries().getVisible()) {
+                    if (sbm.getSeries().getVisible() && sbm.getMarker().isVisible()) {
                         drawMarker(g, upperLeftValue, sbm.getMarker());
                     } else {
                         // don't display if the series is not visible
@@ -337,7 +325,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         }
         
         private void drawFloatingMarkers(Graphics g, Vector2D upperLeftValue) {
-            for (Marker m : floatingMarkers) {
+            for (Marker m : markerMgr.getAllFloatingMarkers()) {
                 drawMarker(g, upperLeftValue, m);
             }
         }

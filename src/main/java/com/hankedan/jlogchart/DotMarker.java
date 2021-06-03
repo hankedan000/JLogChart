@@ -65,6 +65,10 @@ public class DotMarker extends Marker {
 
     @Override
     protected void paintMarker(Graphics g, Vector2D viewOrigin, Vector2D pxScale) {
+        if ( ! isVisible()) {
+            return;
+        }
+        
         Vector2D offsetPos = pos.subtract(viewOrigin);
         g.setColor(fill);
         g.fillOval(

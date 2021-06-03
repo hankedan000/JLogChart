@@ -19,6 +19,8 @@ public abstract class Marker {
     private boolean hoverable = false;
     private String hoverText = "";
     
+    private boolean visible = true;
+    
     public Marker(double x, double y) {
         this(new Vector2D(x,y));
     }
@@ -58,6 +60,15 @@ public abstract class Marker {
         return this.hoverText;
     }
     
+    public Marker setVisible(boolean visible) {
+        this.visible = visible;
+        return this;
+    }
+    
+    public boolean isVisible() {
+        return this.visible;
+    }
+    
     public double getX() {
         return this.pos.getX();
     }
@@ -67,6 +78,10 @@ public abstract class Marker {
     }
     
     protected void paintHoverText(Graphics g, Vector2D viewOrigin, Vector2D pxScale, Vector2D textOffset) {
+        if ( ! visible) {
+            return;
+        }
+        
         Vector2D paintPos = pos.subtract(viewOrigin).add(textOffset);
         paintPos = new Vector2D(paintPos.getX() * pxScale.getX(), paintPos.getY() * pxScale.getY());
         g.setColor(Color.BLACK);
