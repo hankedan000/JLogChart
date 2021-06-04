@@ -482,6 +482,8 @@ public class JLogChart extends javax.swing.JPanel implements
             int x2 = (int)(offset2 * pxPerSamp);
             int width = Math.abs(x2 - x1);
             int leftX = Integer.min(x1, x2);
+            Graphics2D g2 = (Graphics2D)g;
+            g2.setStroke(new BasicStroke(1));
             g.setColor(new Color(200, 200, 200, 50));
             g.fillRect(leftX, 0, width, getHeight());
             
@@ -619,6 +621,8 @@ public class JLogChart extends javax.swing.JPanel implements
 
             int sampOffset = selectedAbsSample - leftViewedSamp();
             int sampX = (int)(sampOffset * getPxPerSample());
+            Graphics2D g2 = (Graphics2D)g;
+            g2.setStroke(new BasicStroke(1));
             g.setColor(Color.CYAN);
             g.drawLine(sampX, 0, sampX, getHeight());
         }
