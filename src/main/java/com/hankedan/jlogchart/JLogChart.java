@@ -538,6 +538,13 @@ public class JLogChart extends javax.swing.JPanel implements
             int leftViewedSamp = lowerViewedSamp(brm);
             int rightViewedSamp = upperViewedSamp(brm);
             double absIdx = leftViewedSamp;
+            /**
+             * Always start drawing on a decimated sample boundary. This helps
+             * to prevent draw artifacts when panning with decimation enabled.
+             */
+            if (sampleDecimationEnabled) {
+                absIdx = Math.floor(absIdx/sampStride) * sampStride;
+            }
             int relIdx = series.getRelSampleIdx((int)absIdx);
             while (absIdx<=rightViewedSamp && relIdx<series.getData().size()) {
                 // Don't draw anything below the FixedRateSeries's absolute range
