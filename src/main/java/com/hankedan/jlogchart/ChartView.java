@@ -5,6 +5,7 @@
  */
 package com.hankedan.jlogchart;
 
+import java.awt.Graphics;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.MouseEvent;
@@ -36,8 +37,8 @@ public class ChartView extends JPanel implements MouseWheelListener,
      * minimum -> always zero
      * maximum -> the maximum number of samples across all series
      */
-    protected final BoundedRangeModel xRange = new DefaultBoundedRangeModel();
-    protected final BoundedRangeModel yRange = new DefaultBoundedRangeModel();
+    protected BoundedRangeModel xRange = new DefaultBoundedRangeModel();
+    protected BoundedRangeModel yRange = new DefaultBoundedRangeModel();
 
     // Set to true if the mouse is hovering over the chart
     private boolean mouseFocused = false;
@@ -76,6 +77,12 @@ public class ChartView extends JPanel implements MouseWheelListener,
     
     private final List<ChartViewListener> listeners = new ArrayList();
     
+    // Other views that are listening to my scroll & zoom events
+    private final List<ChartView> viewsBoundToMe = new ArrayList();
+    
+    // The view that I'm taking scroll & zoom events from
+    private ChartView myBoundView = null;
+    
     public ChartView() {
         addMouseListener(this);
         addMouseMotionListener(this);
@@ -88,6 +95,19 @@ public class ChartView extends JPanel implements MouseWheelListener,
     
     public void removeChartViewLisener(ChartViewListener l) {
         listeners.remove(l);
+    }
+    
+    public void bindTo(ChartView other) {
+        // Cannot rebind to another view
+        if (myBoundView != null) {
+            throw new UnsupportedOperationException("ChartView is already bound!");
+        }
+        
+        if (other != null) {
+            other.viewsBoundToMe.add(this);
+            xRange = other.xRange;
+            yRange = other.yRange;
+        }
     }
     
     public void setX_RangeMin(int min) {
@@ -342,6 +362,25 @@ public class ChartView extends JPanel implements MouseWheelListener,
         }
     }
 
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        
+        List<ChartView> cvToRemove = new ArrayList();
+        // If I'm repainting, then tell those bound to me to also repaint
+        for (ChartView cv : viewsBoundToMe) {
+            if (cv == null) {
+                // must not exist anymore, mark for removal
+                cvToRemove.add(cv);
+            } else {
+                cv.repaint();
+            }
+        }
+        
+        // Clean up bound charts that no longer exists
+        viewsBoundToMe.removeAll(cvToRemove);
+    }
+    
     @Override
     public void mouseClicked(MouseEvent e) {
         boolean isPanClick = false;
