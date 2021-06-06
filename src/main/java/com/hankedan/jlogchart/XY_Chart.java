@@ -18,9 +18,7 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFrame;
@@ -86,6 +84,15 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
     
     public ChartView getChartView() {
         return view;
+    }
+    
+    public void clear() {
+        allSeries.clear();
+        markerMgr.clear();
+        upperLeftLocation = VectorUtils.MAX_VALUE;
+        minBounds = null;
+        maxBounds = null;
+        repaint();
     }
     
     public Series<Vector2D> addSeries(String name, List<Vector2D> data) {

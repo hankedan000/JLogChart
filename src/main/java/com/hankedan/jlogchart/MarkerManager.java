@@ -19,6 +19,11 @@ public class MarkerManager {
     private final List<Marker> floatingMarkers = new ArrayList();
     private final Map<String,List<SeriesBoundMarker>> sbmBySeriesName = new HashMap<>();
     
+    public void clear() {
+        floatingMarkers.clear();
+        sbmBySeriesName.clear();
+    }
+    
     public void removeSeriesMarkers(String seriesName) {
         sbmBySeriesName.remove(seriesName);
     }
