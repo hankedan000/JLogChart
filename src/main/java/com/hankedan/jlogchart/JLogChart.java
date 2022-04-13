@@ -25,6 +25,7 @@ import java.util.logging.Logger;
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.JFrame;
+import org.apache.commons.math3.exception.OutOfRangeException;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
 /**
@@ -669,8 +670,30 @@ public class JLogChart extends javax.swing.JPanel implements
             LabelGroup group = new LabelGroup();
             int deltaSamps = selectionAbsSamp2 - selectionAbsSamp1;
             double deltaTime = deltaSamps * dt;
-            String dtText = String.format("delta time = %.3fs", deltaTime);
+            String dtText = String.format("\u0394 time: %.3fs", deltaTime);
             group.addLabel(new Label(dtText, Color.LIGHT_GRAY, getWidth() - 150, yOffset));
+            yOffset += textHeight + TEXT_SEPERATION;
+            for (Series series : allSeries) {
+                if (series.getVisible()) {
+                    String sText = "";
+                    try
+                    {
+                        double s1 = (double)series.getAbsSampleValue(selectionAbsSamp1);
+                        double s2 = (double)series.getAbsSampleValue(selectionAbsSamp2);
+                        final String S_FMT = "%s: [%.3f,%.3f]; \u0394 %.3f";
+                        sText = String.format(S_FMT, series.name, s1, s2, s2-s1);
+                    }
+                    catch (OutOfRangeException oor)
+                    {
+                        // can get in here is a series doesn't have samples to
+                        // provide within the range of the selection
+                        sText = String.format("%s: ---", series.name);
+                    }
+                    
+                    group.addLabel(new Label(sText, series.getColor(), getWidth() - 150, yOffset));
+                    yOffset += textHeight + TEXT_SEPERATION;
+                }
+            }
             
             group.draw(g, BG_COLOR);
         }
