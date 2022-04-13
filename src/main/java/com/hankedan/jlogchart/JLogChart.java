@@ -727,8 +727,11 @@ public class JLogChart extends javax.swing.JPanel implements
 
             LabelGroup maxGroup = new LabelGroup();
             LabelGroup minGroup = new LabelGroup();
-            for (int i=0; i<allSeries.size(); i++) {
-                Series series = allSeries.get(i);
+            for (Series series : allSeries) {
+                // don't include series that are not visible
+                if ( ! series.getVisible()) {
+                    continue;
+                }
 
                 String maxText = String.format("max: %.3f",series.maxValue());
                 maxGroup.addLabel(new Label(maxText,series.getColor()));
@@ -751,24 +754,27 @@ public class JLogChart extends javax.swing.JPanel implements
             String dtText = String.format("\u0394 time: %.3fs", deltaTime);
             group.addLabel(new Label(dtText, Color.LIGHT_GRAY));
             for (Series series : allSeries) {
-                if (series.getVisible()) {
-                    String sText = "";
-                    try
-                    {
-                        double s1 = (double)series.getAbsSampleValue(selectionAbsSamp1);
-                        double s2 = (double)series.getAbsSampleValue(selectionAbsSamp2);
-                        final String S_FMT = "%s: [%.3f,%.3f]; \u0394 %.3f";
-                        sText = String.format(S_FMT, series.name, s1, s2, s2-s1);
-                    }
-                    catch (OutOfRangeException oor)
-                    {
-                        // can get in here is a series doesn't have samples to
-                        // provide within the range of the selection
-                        sText = String.format("%s: ---", series.name);
-                    }
-                    
-                    group.addLabel(new Label(sText, series.getColor()));
+                // don't include series that are not visible
+                if ( ! series.getVisible()) {
+                    continue;
                 }
+                
+                String sText = "";
+                try
+                {
+                    double s1 = (double)series.getAbsSampleValue(selectionAbsSamp1);
+                    double s2 = (double)series.getAbsSampleValue(selectionAbsSamp2);
+                    final String S_FMT = "%s: [%.3f,%.3f]; \u0394 %.3f";
+                    sText = String.format(S_FMT, series.name, s1, s2, s2-s1);
+                }
+                catch (OutOfRangeException oor)
+                {
+                    // can get in here is a series doesn't have samples to
+                    // provide within the range of the selection
+                    sText = String.format("%s: ---", series.name);
+                }
+
+                group.addLabel(new Label(sText, series.getColor()));
             }
             
             group.draw(g, BG_COLOR, DrawOrigin.UPPER_RIGHT, getWidth() - CHART_MARGIN, CHART_MARGIN, 3, 0);
