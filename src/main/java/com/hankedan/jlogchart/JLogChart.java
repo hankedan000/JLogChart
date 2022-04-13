@@ -17,6 +17,7 @@ import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import static java.lang.Integer.max;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -307,45 +308,122 @@ public class JLogChart extends javax.swing.JPanel implements
     private class Label {
         public final String text;
         public final Color textColor;
-        public final int x;
-        public final int y;
-        public final int margin;
-        public static final int DEFAULT_MARGIN = 2;
 
-        public Label(String text, Color textColor, int x, int y) {
-            this(text,textColor,x,y,DEFAULT_MARGIN);
-        }
-
-        public Label(String text, Color textColor, int x, int y, int margin) {
+        public Label(String text, Color textColor) {
             this.text = text;
             this.textColor = textColor;
-            this.x = x;
-            this.y = y;
-            this.margin = margin;
         }
 
-        public void draw(Graphics g, Color background) {
+        /**
+         *  BOUNDING BOX
+         *  +------------------------------------------------------+
+         *  |                                                      |
+         *  |   +----------------------------------------------+   |
+         *  |   |                                              |   |
+         *  |   |                                              |   |
+         *  |   |    vvv TEXT BASELINE vvv                     |   |
+         *  |   | -------------------------------------        |   |
+         *  |   +----------------------------------------------+   |
+         *  | PADDING                                              |
+         *  +------------------------------------------------------+
+         * 
+         * @param g
+         * 
+         * @param x
+         * absolute x offset of the upper left corner of the bounding box
+         * 
+         * @param y
+         * absolute y offset of the upper left corner of the bounding box
+         * 
+         * @param xPadding
+         * optional padding in pixels around the text on the left and right.
+         * value just accounts for one side, so total padding from left to right
+         * is xPadding * 2.
+         * 
+         * @param yPadding
+         * optional padding in pixels around the text on the top and bottom
+         * value just accounts for one side, so total padding from top to bottom
+         * is yPadding * 2.
+         * @return 
+         */
+        public void draw(Graphics g, Color background, int x, int y, int xPadding, int yPadding) {
             g.setColor(background);
             FontMetrics fm = g.getFontMetrics();
             int textHeight = fm.getHeight();
-            int bgWidth = margin * 2 + fm.stringWidth(text);
-            int bgHeight = margin * 2 + textHeight;
-            g.fillRect(x, y - fm.getMaxAscent() - margin, bgWidth, bgHeight);
-            draw(g);
+            int bgWidth = xPadding * 2 + fm.stringWidth(text);
+            int bgHeight = yPadding * 2 + textHeight;
+            g.fillRect(x, y, bgWidth, bgHeight);
+            draw(g, x, y, xPadding, yPadding);
         }
 
-        public void draw(Graphics g) {
+        /**
+         * See documentation on draw() method for info on x, y, and padding
+         */
+        public void draw(Graphics g, int x, int y, int xPadding, int yPadding) {
+            FontMetrics fm = g.getFontMetrics();
+            drawText(g, fm, x, y, xPadding, yPadding);
+        }
+
+        /**
+         * See documentation on draw() method for info on x, y, and padding
+         */
+        private void drawText(Graphics g, FontMetrics fm, int x, int y, int xPadding, int yPadding) {
             g.setColor(textColor);
-            g.drawString(text, x + margin, y + margin);
+            g.drawString(text, x + xPadding, y + yPadding + fm.getMaxAscent());
         }
         
         public Rectangle2D getBoundingBox(Graphics g) {
+            return getBoundingBox(g, 0, 0, 0, 0);
+        }
+        
+        public Rectangle2D getBoundingBox(Graphics g, int xPadding, int yPadding) {
+            return getBoundingBox(g, 0, 0, xPadding, yPadding);
+        }
+        
+        /**
+         *  BOUNDING BOX
+         *  +------------------------------------------------------+
+         *  |                                                      |
+         *  |   +----------------------------------------------+   |
+         *  |   |                                              |   |
+         *  |   |                                              |   |
+         *  |   |    vvv TEXT BASELINE vvv                     |   |
+         *  |   | -------------------------------------        |   |
+         *  |   +----------------------------------------------+   |
+         *  | PADDING                                              |
+         *  +------------------------------------------------------+
+         * 
+         * @param g
+         * 
+         * @param x
+         * absolute x offset of the upper left corner of the bounding box
+         * 
+         * @param y
+         * absolute y offset of the upper left corner of the bounding box
+         * 
+         * @param xPadding
+         * optional padding in pixels around the text on the left and right.
+         * value just accounts for one side, so total padding from left to right
+         * is xPadding * 2.
+         * 
+         * @param yPadding
+         * optional padding in pixels around the text on the top and bottom
+         * value just accounts for one side, so total padding from top to bottom
+         * is yPadding * 2.
+         * 
+         * @return 
+         */
+        public Rectangle2D getBoundingBox(Graphics g, int x, int y, int xPadding, int yPadding) {
             FontMetrics fm = g.getFontMetrics();
             int textHeight = fm.getHeight();
-            int bgWidth = margin * 2 + fm.stringWidth(text);
-            int bgHeight = margin * 2 + textHeight;
-            return new Rectangle2D.Double(x, y - fm.getMaxAscent() - margin, bgWidth, bgHeight);
+            int bgWidth = xPadding * 2 + fm.stringWidth(text);
+            int bgHeight = yPadding * 2 + textHeight;
+            return new Rectangle2D.Double(x , y, bgWidth, bgHeight);
         }
+    }
+    
+    enum DrawOrigin {
+        UPPER_LEFT, UPPER_RIGHT, LOWER_LEFT, LOWER_RIGHT
     }
     
     private class LabelGroup {
@@ -355,27 +433,42 @@ public class JLogChart extends javax.swing.JPanel implements
             labels.add(l);
         }
         
-        public void draw(Graphics g, Color background) {
-            Rectangle2D bgBox = null;
+        public void draw(Graphics g, Color background, DrawOrigin origin, int x, int y, int xPadding, int yPadding) {
+            ArrayList<Rectangle2D> relBounds = new ArrayList<>(labels.size());
+            int groupHeight = 0;
+            int groupWidth = 0;
             for (Label l : labels) {
-                if (bgBox == null) {
-                    bgBox = l.getBoundingBox(g);
-                } else {
-                    bgBox.add(l.getBoundingBox(g));
-                }
+                Rectangle2D lBox = l.getBoundingBox(g, 0, groupHeight, xPadding, yPadding);
+                groupHeight += lBox.getHeight();
+                groupWidth = max(groupWidth, (int)(lBox.getWidth()));
+                relBounds.add(lBox);
             }
             
-            if (bgBox != null) {
-                g.setColor(background);
-                g.fillRect(
-                        (int)bgBox.getX(),
-                        (int)bgBox.getY(),
-                        (int)bgBox.getWidth(),
-                        (int)bgBox.getHeight());
+            int upperLeftX = x;
+            int upperLeftY = y;
+            switch (origin) {
+                case UPPER_LEFT:
+                    // untouched
+                    break;
+                case UPPER_RIGHT:
+                    upperLeftX -= groupWidth;
+                    break;
+                case LOWER_LEFT:
+                    upperLeftY -= groupHeight;
+                    break;
+                case LOWER_RIGHT:
+                    upperLeftX -= groupWidth;
+                    upperLeftY -= groupHeight;
+                    break;
             }
             
-            for (Label l : labels) {
-                l.draw(g);
+            g.setColor(background);
+            g.fillRect(upperLeftX, upperLeftY, groupWidth, groupHeight);
+            
+            for (int ll=0; ll<labels.size(); ll++) {
+                Label l = labels.get(ll);
+                Rectangle2D lBox = relBounds.get(ll);
+                l.draw(g,(int)(upperLeftX + lBox.getX()), (int)(upperLeftY + lBox.getY()), xPadding, yPadding);
             }
         }
     }
@@ -630,49 +723,33 @@ public class JLogChart extends javax.swing.JPanel implements
 
         private void drawMinMaxOverlay(Graphics g) {
             int CHART_MARGIN = 3;// margin around chart to keep out of
-            int TEXT_SEPERATION = 0;// px between text
-            Color BG_COLOR = new Color(0, 0, 0, 50);
-
-            FontMetrics fm = g.getFontMetrics();
-            int textHeight = fm.getHeight();
+            Color BG_COLOR = new Color(0, 0, 0, 100);
 
             LabelGroup maxGroup = new LabelGroup();
             LabelGroup minGroup = new LabelGroup();
             for (int i=0; i<allSeries.size(); i++) {
                 Series series = allSeries.get(i);
 
-                int yOffset = textHeight * (i+1) + TEXT_SEPERATION * i;
-
                 String maxText = String.format("max: %.3f",series.maxValue());
-                int maxPosY = CHART_MARGIN + yOffset;
-                int maxPosX = CHART_MARGIN;
-                maxGroup.addLabel(new Label(maxText,series.getColor(),maxPosX,maxPosY));
+                maxGroup.addLabel(new Label(maxText,series.getColor()));
 
                 String minText = String.format("min: %.3f",series.minValue());
-                int minPosY = getHeight() - CHART_MARGIN - textHeight * allSeries.size() + yOffset;
-                int minPosX = CHART_MARGIN;
-                minGroup.addLabel(new Label(minText,series.getColor(),minPosX,minPosY));
+                minGroup.addLabel(new Label(minText,series.getColor()));
             }
 
-            maxGroup.draw(g, BG_COLOR);
-            minGroup.draw(g, BG_COLOR);
+            maxGroup.draw(g, BG_COLOR, DrawOrigin.UPPER_LEFT, CHART_MARGIN, CHART_MARGIN, 3, 0);
+            minGroup.draw(g, BG_COLOR, DrawOrigin.LOWER_LEFT, CHART_MARGIN, getHeight() - CHART_MARGIN, 3, 0);
         }
 
         private void drawSelectionOverlay(Graphics g) {
             int CHART_MARGIN = 3;// margin around chart to keep out of
-            int TEXT_SEPERATION = 0;// px between text
-            Color BG_COLOR = new Color(0, 0, 0, 50);
-            
-            FontMetrics fm = g.getFontMetrics();
-            int textHeight = fm.getHeight();
-            int yOffset = CHART_MARGIN + textHeight;
+            Color BG_COLOR = new Color(0, 0, 0, 100);
             
             LabelGroup group = new LabelGroup();
             int deltaSamps = selectionAbsSamp2 - selectionAbsSamp1;
             double deltaTime = deltaSamps * dt;
             String dtText = String.format("\u0394 time: %.3fs", deltaTime);
-            group.addLabel(new Label(dtText, Color.LIGHT_GRAY, getWidth() - 150, yOffset));
-            yOffset += textHeight + TEXT_SEPERATION;
+            group.addLabel(new Label(dtText, Color.LIGHT_GRAY));
             for (Series series : allSeries) {
                 if (series.getVisible()) {
                     String sText = "";
@@ -690,12 +767,11 @@ public class JLogChart extends javax.swing.JPanel implements
                         sText = String.format("%s: ---", series.name);
                     }
                     
-                    group.addLabel(new Label(sText, series.getColor(), getWidth() - 150, yOffset));
-                    yOffset += textHeight + TEXT_SEPERATION;
+                    group.addLabel(new Label(sText, series.getColor()));
                 }
             }
             
-            group.draw(g, BG_COLOR);
+            group.draw(g, BG_COLOR, DrawOrigin.UPPER_RIGHT, getWidth() - CHART_MARGIN, CHART_MARGIN, 3, 0);
         }
         
         private void updateMiniMapImage() {
