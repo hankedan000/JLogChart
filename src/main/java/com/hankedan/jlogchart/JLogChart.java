@@ -725,23 +725,19 @@ public class JLogChart extends javax.swing.JPanel implements
             int CHART_MARGIN = 3;// margin around chart to keep out of
             Color BG_COLOR = new Color(0, 0, 0, 100);
 
-            LabelGroup maxGroup = new LabelGroup();
-            LabelGroup minGroup = new LabelGroup();
-            for (Series series : allSeries) {
+            LabelGroup group = new LabelGroup();
+            for (Series s : allSeries) {
                 // don't include series that are not visible
-                if ( ! series.getVisible()) {
+                if ( ! s.getVisible()) {
                     continue;
                 }
 
-                String maxText = String.format("max: %.3f",series.maxValue());
-                maxGroup.addLabel(new Label(maxText,series.getColor()));
-
-                String minText = String.format("min: %.3f",series.minValue());
-                minGroup.addLabel(new Label(minText,series.getColor()));
+                final String S_FMT = "%-10s \u2193 %+.3f \u2191 %+.3f";
+                String maxText = String.format(S_FMT,s.name,s.minValue(),s.maxValue());
+                group.addLabel(new Label(maxText,s.getColor()));
             }
 
-            maxGroup.draw(g, BG_COLOR, DrawOrigin.UPPER_LEFT, CHART_MARGIN, CHART_MARGIN, 3, 0);
-            minGroup.draw(g, BG_COLOR, DrawOrigin.LOWER_LEFT, CHART_MARGIN, getHeight() - CHART_MARGIN, 3, 0);
+            group.draw(g, BG_COLOR, DrawOrigin.UPPER_RIGHT, getWidth() - CHART_MARGIN, CHART_MARGIN, 3, 0);
         }
 
         private void drawSelectionOverlay(Graphics g) {
@@ -764,20 +760,20 @@ public class JLogChart extends javax.swing.JPanel implements
                 {
                     double s1 = (double)series.getAbsSampleValue(selectionAbsSamp1);
                     double s2 = (double)series.getAbsSampleValue(selectionAbsSamp2);
-                    final String S_FMT = "%s: [%.3f,%.3f]; \u0394 %.3f";
-                    sText = String.format(S_FMT, series.name, s1, s2, s2-s1);
+                    final String S_FMT = "[%+.3f,%+.3f]; \u0394 %+.3f";
+                    sText = String.format(S_FMT, s1, s2, s2-s1);
                 }
                 catch (OutOfRangeException oor)
                 {
                     // can get in here is a series doesn't have samples to
                     // provide within the range of the selection
-                    sText = String.format("%s: ---", series.name);
+                    sText = String.format("---");
                 }
 
                 group.addLabel(new Label(sText, series.getColor()));
             }
             
-            group.draw(g, BG_COLOR, DrawOrigin.UPPER_RIGHT, getWidth() - CHART_MARGIN, CHART_MARGIN, 3, 0);
+            group.draw(g, BG_COLOR, DrawOrigin.UPPER_LEFT, CHART_MARGIN, CHART_MARGIN, 3, 0);
         }
         
         private void updateMiniMapImage() {
