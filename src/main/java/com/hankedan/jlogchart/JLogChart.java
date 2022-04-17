@@ -560,6 +560,10 @@ public class JLogChart extends javax.swing.JPanel implements
         
         private boolean selectionValid = false;
         private int selectionAbsSamp1, selectionAbsSamp2;
+        
+        private final BasicStroke stroke1 = new BasicStroke(1);
+        private final BasicStroke strokeNorm = new BasicStroke(Series.NORMAL_THICKNESS);
+        private final BasicStroke strokeBold = new BasicStroke(Series.BOLD_THICKNESS);
     
         // A "full view" image of all the series used for minimap scrollbar
         private BufferedImage miniMapImage = null;
@@ -577,7 +581,7 @@ public class JLogChart extends javax.swing.JPanel implements
             int width = Math.abs(x2 - x1);
             int leftX = Integer.min(x1, x2);
             Graphics2D g2 = (Graphics2D)g;
-            g2.setStroke(new BasicStroke(1));
+            g2.setStroke(stroke1);
             g.setColor(new Color(200, 200, 200, 50));
             g.fillRect(leftX, 0, width, getHeight());
             
@@ -595,9 +599,9 @@ public class JLogChart extends javax.swing.JPanel implements
             Graphics2D g2 = (Graphics2D)g;
             g2.setColor(series.getColor());
             if (series.isBolded()) {
-                g2.setStroke(new BasicStroke(Series.BOLD_THICKNESS));
+                g2.setStroke(strokeBold);
             } else {
-                g2.setStroke(new BasicStroke(Series.NORMAL_THICKNESS));
+                g2.setStroke(strokeNorm);
             }
 
             // Compute x-axis scaling factor
@@ -716,7 +720,7 @@ public class JLogChart extends javax.swing.JPanel implements
             int sampOffset = selectedAbsSample - leftViewedSamp();
             int sampX = (int)(sampOffset * getPxPerSample());
             Graphics2D g2 = (Graphics2D)g;
-            g2.setStroke(new BasicStroke(1));
+            g2.setStroke(stroke1);
             g.setColor(Color.CYAN);
             g.drawLine(sampX, 0, sampX, getHeight());
         }

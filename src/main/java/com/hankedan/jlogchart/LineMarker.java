@@ -5,8 +5,10 @@
  */
 package com.hankedan.jlogchart;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
 /**
@@ -17,6 +19,7 @@ public class LineMarker extends Marker {
     private ChartView view;
     private Color color;
     private boolean horzOrientation = false;
+    private BasicStroke stroke = new BasicStroke(1);
     
     public LineMarker() {
         super(Vector2D.ZERO);
@@ -73,7 +76,9 @@ public class LineMarker extends Marker {
             return;
         }
         
+        Graphics2D g2 = (Graphics2D)g;
         g.setColor(color);
+        g2.setStroke(stroke);
         if (isHorizontal()) {
             int width = view.getWidth();
             int yPos = (int)((pos.getY() - viewOrigin.getY()) * pxScale.getY());
