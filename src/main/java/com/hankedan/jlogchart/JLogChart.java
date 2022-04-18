@@ -564,6 +564,9 @@ public class JLogChart extends javax.swing.JPanel implements
         private final BasicStroke stroke1 = new BasicStroke(1);
         private final BasicStroke strokeNorm = new BasicStroke(Series.NORMAL_THICKNESS);
         private final BasicStroke strokeBold = new BasicStroke(Series.BOLD_THICKNESS);
+        
+        private final int CHART_MARGIN = 3;// margin around chart to keep out of
+        private final Color OVERLAY_BG_COLOR = new Color(0, 0, 0, 100);
     
         // A "full view" image of all the series used for minimap scrollbar
         private BufferedImage miniMapImage = null;
@@ -572,7 +575,7 @@ public class JLogChart extends javax.swing.JPanel implements
             addChartViewListener(this);
         }
         
-        private void drawSelection(Graphics g) {
+        private void drawSelectionRange(Graphics g) {
             double pxPerSamp = getPxPerSample();
             int offset1 = selectionAbsSamp1 - leftViewedSamp();
             int offset2 = selectionAbsSamp2 - leftViewedSamp();
@@ -725,10 +728,34 @@ public class JLogChart extends javax.swing.JPanel implements
             g.drawLine(sampX, 0, sampX, getHeight());
         }
 
-        private void drawMinMaxOverlay(Graphics g) {
-            int CHART_MARGIN = 3;// margin around chart to keep out of
-            Color BG_COLOR = new Color(0, 0, 0, 100);
+        private void drawSelectedSampleInfo(Graphics g) {
+            LabelGroup group = new LabelGroup();
+            for (Series series : allSeries) {
+                // don't include series that are not visible
+                if ( ! series.getVisible()) {
+                    continue;
+                }
+                
+                String sText = "";
+                try
+                {
+                    double s = (double)series.getAbsSampleValue(selectedAbsSample);
+                    sText = String.format("%+.3f", s);
+                }
+                catch (OutOfRangeException oor)
+                {
+                    // can get in here is a series doesn't have samples to
+                    // provide within the range of the selection
+                    sText = String.format("---");
+                }
 
+                group.addLabel(new Label(sText, series.getColor()));
+            }
+            
+            group.draw(g, OVERLAY_BG_COLOR, DrawOrigin.UPPER_LEFT, CHART_MARGIN, CHART_MARGIN, 3, 0);
+        }
+
+        private void drawMinMaxOverlay(Graphics g) {
             LabelGroup group = new LabelGroup();
             for (Series s : allSeries) {
                 // don't include series that are not visible
@@ -741,13 +768,10 @@ public class JLogChart extends javax.swing.JPanel implements
                 group.addLabel(new Label(maxText,s.getColor()));
             }
 
-            group.draw(g, BG_COLOR, DrawOrigin.UPPER_RIGHT, getWidth() - CHART_MARGIN, CHART_MARGIN, 3, 0);
+            group.draw(g, OVERLAY_BG_COLOR, DrawOrigin.UPPER_RIGHT, getWidth() - CHART_MARGIN, CHART_MARGIN, 3, 0);
         }
 
-        private void drawSelectionOverlay(Graphics g) {
-            int CHART_MARGIN = 3;// margin around chart to keep out of
-            Color BG_COLOR = new Color(0, 0, 0, 100);
-            
+        private void drawSelectionRangeInfo(Graphics g) {
             LabelGroup group = new LabelGroup();
             int deltaSamps = selectionAbsSamp2 - selectionAbsSamp1;
             double deltaTime = deltaSamps * dt;
@@ -777,7 +801,7 @@ public class JLogChart extends javax.swing.JPanel implements
                 group.addLabel(new Label(sText, series.getColor()));
             }
             
-            group.draw(g, BG_COLOR, DrawOrigin.UPPER_LEFT, CHART_MARGIN, CHART_MARGIN, 3, 0);
+            group.draw(g, OVERLAY_BG_COLOR, DrawOrigin.LOWER_RIGHT, getWidth() - CHART_MARGIN, getHeight() - CHART_MARGIN, 3, 0);
         }
         
         private void updateMiniMapImage() {
@@ -806,14 +830,15 @@ public class JLogChart extends javax.swing.JPanel implements
             drawVisibleSeries(g, xRange);
             if (selectedAbsSample != -1) {
                 drawSelectedSample(g);
+                drawSelectedSampleInfo(g);
             }
             drawSeriesBoundMarkers(g, xRange);
             drawFloatingMarkers(g, xRange);
 
             // Draw chart overlays
             if (selectionValid) {
-                drawSelection(g);
-                drawSelectionOverlay(g);
+                drawSelectionRange(g);
+                drawSelectionRangeInfo(g);
             }
             drawMinMaxOverlay(g);
         }
