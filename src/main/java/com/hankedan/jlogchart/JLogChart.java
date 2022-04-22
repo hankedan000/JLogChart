@@ -566,8 +566,13 @@ public class JLogChart extends javax.swing.JPanel implements
         private final BasicStroke strokeBold = new BasicStroke(Series.BOLD_THICKNESS);
         
         private final int CHART_MARGIN = 3;// margin around chart to keep out of
+        private final Color BG_COLOR = new Color(60, 63, 65);// dark grey
         private final Color OVERLAY_BG_COLOR = new Color(0, 0, 0, 100);
     
+        // the live drawn image of the series data
+        // drawing to a BufferedImage is faster than drawing to screen graphics
+        private BufferedImage seriesImage = null;
+        
         // A "full view" image of all the series used for minimap scrollbar
         private BufferedImage miniMapImage = null;
         
@@ -805,10 +810,23 @@ public class JLogChart extends javax.swing.JPanel implements
         }
         
         private void updateMiniMapImage() {
+            int w = getWidth();
+            int h = getHeight();
             // We can't generate images if view has no width or height
-            if (getWidth() == 0 || getHeight() == 0) {
+            if (w == 0 || h == 0) {
                 miniMapImage = null;
                 return;
+            }
+            
+            // see if we need a new BufferedImage (first time or resized)
+            boolean needNewImg = false;
+            if (miniMapImage == null) {
+                needNewImg = true;
+            } else if (miniMapImage.getWidth() != w || miniMapImage.getHeight() != h) {
+                needNewImg = true;
+            }
+            if (needNewImg) {
+                miniMapImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
             }
             
             BoundedRangeModel fullView = new DefaultBoundedRangeModel();
@@ -817,9 +835,37 @@ public class JLogChart extends javax.swing.JPanel implements
             fullView.setExtent(xRange.getMaximum());
 
             // Paint an image for the full chart series
-            miniMapImage = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
             Graphics g = miniMapImage.getGraphics();
+            g.setColor(BG_COLOR);
+            g.fillRect(0, 0, w, h);
             view.drawVisibleSeries(g, fullView);
+        }
+        
+        private void updateSeriesImage() {
+            int w = getWidth();
+            int h = getHeight();
+            // We can't generate images if view has no width or height
+            if (w == 0 || h == 0) {
+                seriesImage = null;
+                return;
+            }
+            
+            // see if we need a new BufferedImage (first time or resized)
+            boolean needNewImg = false;
+            if (seriesImage == null) {
+                needNewImg = true;
+            } else if (seriesImage.getWidth() != w || seriesImage.getHeight() != h) {
+                needNewImg = true;
+            }
+            if (needNewImg) {
+                seriesImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+            }
+            
+            // Paint an image for the zoomed chart view
+            Graphics g = seriesImage.getGraphics();
+            g.setColor(BG_COLOR);
+            g.fillRect(0, 0, w, h);
+            drawVisibleSeries(g, xRange);
         }
         
         @Override
@@ -827,7 +873,10 @@ public class JLogChart extends javax.swing.JPanel implements
             super.paintComponent(g);
             
             // Draw the chart view
-            drawVisibleSeries(g, xRange);
+            updateSeriesImage();
+            if (seriesImage != null) {
+                g.drawImage(seriesImage, 0, 0, null);
+            }
             if (selectedAbsSample != -1) {
                 drawSelectedSample(g);
                 drawSelectedSampleInfo(g);
