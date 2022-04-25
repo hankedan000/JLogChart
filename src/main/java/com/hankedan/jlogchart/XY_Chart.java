@@ -5,12 +5,10 @@
  */
 package com.hankedan.jlogchart;
 
-import com.formdev.flatlaf.FlatDarkLaf;
 import com.hankedan.jlogchart.util.VectorUtils;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
@@ -21,7 +19,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JFrame;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
 /**
@@ -199,6 +196,13 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
                     new Object[]{seriesName});
         }
     }
+    /**
+     * @param visibleOnly 
+     * If true, then the view will only be fit around the visible series
+     */
+    public void fitViewToData(boolean visibleOnly) {
+        view.fitViewToData(true);
+    }
 
     @Override
     public void seriesSubTitleChanged(String seriesName, String oldSubTitle, String newSubTitle) {
@@ -257,24 +261,51 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             addMouseWheelListener(this);
         }
         
-        public void fitViewToData() {
-            if (allSeries.isEmpty()) {
-                upperLeftLocation = new Vector2D(0, 0);
-                pxPerValue = 0;
+        /**
+         * @param visibleOnly 
+         * If true, then the view will only be fit around the visible series
+         */
+        public void fitViewToData(boolean visibleOnly) {
+            // rescompute min/max bounds point based on series data and optional visibilty
+            Vector2D minB = null;
+            Vector2D maxB = null;
+            if (visibleOnly) {
+                for (Series s : allSeries) {
+                    if (s.getVisible()) {
+                        if (minB == null) {
+                            minB = (Vector2D)s.minValue();
+                            maxB = (Vector2D)s.maxValue();
+                        } else {
+                            minB = VectorUtils.min(minB, (Vector2D)s.minValue());
+                            maxB = VectorUtils.max(maxB, (Vector2D)s.maxValue());
+                        }
+                    }
+                }
+            } else {
+                minB = minBounds;
+                maxB = maxBounds;
+            }
+            
+            // no data yet or none of the series are visible
+            if (minB == null || maxB == null) {
                 return;
             }
 
-            Vector2D diag = maxBounds.subtract(minBounds);
-            Vector2D middle = minBounds.add(diag.scalarMultiply(0.5));
-            // Compute sqaure bounding box, assume wider than tall
-            double halfSqW = diag.getX() / 2.0;
-            if (diag.getY() > diag.getX()) {
-                // Discover bounding bix is taller than it is wide
-                halfSqW = diag.getY() / 2.0;
+            Vector2D dataDiag = maxBounds.subtract(minBounds);
+            Vector2D dispDiag = new Vector2D(getWidth(), getHeight());
+            double dataSlope = dataDiag.getY() / dataDiag.getX();
+            double dispSlope = dispDiag.getY() / dispDiag.getX();
+            if (dataSlope > dispSlope) {
+                // visible data is constrained by screen height
+                pxPerValue = (double)getHeight() / dataDiag.getY();
+            } else {
+                // visible data is constrained by screen width
+                pxPerValue = (double)getWidth() / dataDiag.getX();
             }
-            Vector2D halfSqDiag = new Vector2D(halfSqW,halfSqW);
-            Vector2D minSqBounds = middle.subtract(halfSqDiag);
-            Vector2D maxSqBounds = middle.add(halfSqDiag);
+            Vector2D middle = minBounds.add(dataDiag.scalarMultiply(0.5));
+            upperLeftLocation = middle.subtract(dispDiag.scalarMultiply(0.5/pxPerValue));
+            
+            repaint();
         }
 
         private void drawSeries(Graphics g, Vector2D upperLeftValue, Series<Vector2D> series) {
@@ -474,62 +505,6 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             xyChartZoom(zoomIn, VectorUtils.toVector(e), ZOOM_AMOUNT);
         }
         
-    }
-    
-    public static void main(String[] args) {
-        FlatDarkLaf.install();
-        
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                JFrame frame = new JFrame("XY_Chart Standalone");
-                frame.setLayout(new BorderLayout());
-                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                
-                // Create and show the JLogChart GUI
-                XY_Chart chart = new XY_Chart();
-                chart.setPreferredSize(new Dimension(600, 400));
-                frame.add(chart, BorderLayout.CENTER);
-                
-                int N_SAMPS = 50;
-                double radPerSamp = Math.PI * 2 / (N_SAMPS - 1);
-                List<Vector2D> circData = new ArrayList();
-                List<Vector2D> ovalData = new ArrayList();
-                for (int i=0; i<N_SAMPS; i++) {
-                    double angle = i * radPerSamp;
-                    circData.add(new Vector2D(Math.cos(angle), Math.sin(angle)));
-                    ovalData.add(new Vector2D(1.0 + 0.5 * Math.cos(angle), 0.75 * Math.sin(angle)));
-                }
-                Series circSeries = chart.addSeries("circle", circData);
-                Series ovalSeries = chart.addSeries("oval", ovalData).setBolded(true);
-                
-                SeriesBoundMarker sbm = new SeriesBoundMarker(circSeries, new DotMarker(5));
-                chart.addSeriesBoundMarker(sbm);
-                
-                Thread t = new Thread(new Runnable() {
-                    Logger logger = Logger.getLogger("Thread");
-                    int offset = 0;
-                    @Override
-                    public void run() {
-                        while (true) {
-                            circSeries.setOffset(offset);
-                            frame.repaint();
-                            offset--;
-                            try {
-                                Thread.sleep(500, 0);
-                            } catch (InterruptedException ex) {
-                                Logger.getLogger(XY_Chart.class.getName()).log(Level.SEVERE, null, ex);
-                            }
-                        }
-                    }
-                });
-                t.start();
-                
-                // Show the GUI
-                frame.pack();
-                frame.setVisible(true);
-            }
-        });
     }
     
     /**
