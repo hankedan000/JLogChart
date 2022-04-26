@@ -31,15 +31,6 @@ public class Series<T> {
     
     public static final int NORMAL_THICKNESS = 1;
     public static final int BOLD_THICKNESS = 3;
-
-    public static final Color[] SERIES_COLOR_PALETTE = {
-        Color.RED,
-        Color.ORANGE,
-        Color.YELLOW,
-        Color.GREEN,
-        Color.BLUE,
-        Color.MAGENTA,
-    };
     
     private static final Logger logger = Logger.getLogger(Series.class.getName());
     
@@ -166,11 +157,6 @@ public class Series<T> {
 
     public void removeSeriesListener(SeriesChangeListener l) {
         listeners.remove(l);
-    }
-    
-    public static Color getDefaultColor(int idx) {
-        int colorIdx = idx % SERIES_COLOR_PALETTE.length;
-        return SERIES_COLOR_PALETTE[colorIdx];
     }
 
     public Series setOffset(int newOffset) {

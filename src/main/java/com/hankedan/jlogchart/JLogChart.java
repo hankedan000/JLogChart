@@ -7,6 +7,8 @@ package com.hankedan.jlogchart;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.hankedan.jlogchart.MiniMapScrollbar.MiniMapable;
+import com.hankedan.jlogchart.util.ColorPalette;
+import com.hankedan.jlogchart.util.ColorPalette.WrapBehavior;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -153,7 +155,7 @@ public class JLogChart extends javax.swing.JPanel implements
                     "Duplicate add of series data with name {0}. Ignoring.",
                     new Object[]{name});
         } else {
-            Color color = Series.getDefaultColor(allSeries.size());
+            Color color = ColorPalette.getDefault(allSeries.size(), WrapBehavior.REPEAT);
             series = new Series(name, color, data);
             allSeries.add(series);
             minValueY = Double.min(minValueY, series.minValue());

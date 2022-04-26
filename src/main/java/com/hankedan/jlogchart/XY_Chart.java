@@ -5,6 +5,8 @@
  */
 package com.hankedan.jlogchart;
 
+import com.hankedan.jlogchart.util.ColorPalette;
+import com.hankedan.jlogchart.util.ColorPalette.WrapBehavior;
 import com.hankedan.jlogchart.util.VectorUtils;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -100,7 +102,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
                     "Duplicate add of series data with name {0}. Ignoring.",
                     new Object[]{name});
         } else {
-            Color color = Series.getDefaultColor(allSeries.size());
+            Color color = ColorPalette.getDefault(allSeries.size(), WrapBehavior.REPEAT);
             series = new Series<Vector2D>(name, color, data);
             series.addSeriesListener(this);
             allSeries.add(series);
