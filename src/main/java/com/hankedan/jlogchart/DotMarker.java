@@ -7,7 +7,6 @@ package com.hankedan.jlogchart;
 
 import java.awt.Color;
 import java.awt.Graphics;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
@@ -16,7 +15,6 @@ import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
  * @author daniel
  */
 public class DotMarker extends Marker {
-    private Logger logger = Logger.getLogger(DotMarker.class.getName());
     private double radius;
     private Color fill;
     private Color stroke;
