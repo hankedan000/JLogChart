@@ -311,7 +311,8 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         }
 
         private void drawSeries(Graphics g, Vector2D upperLeftValue, Series<Vector2D> series) {
-            if (series.getData() == null) {
+            List<Vector2D> sData = series.getData();
+            if (sData == null) {
                 return;
             }
             
@@ -323,18 +324,18 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
                 g2.setStroke(new BasicStroke(Series.NORMAL_THICKNESS));
             }
             
-            Vector2D prevOffsetPx = null;
-            for (Vector2D p : series.getData()) {
-                Vector2D offset = p.subtract(upperLeftValue);
-                Vector2D offsetPx = offset.scalarMultiply(pxPerValue);
-                
-                if (prevOffsetPx != null) {
-                    g.drawLine(
-                            (int)prevOffsetPx.getX(), (int)prevOffsetPx.getY(),
-                            (int)offsetPx.getX(), (int)offsetPx.getY());
+            boolean firstPass = true;
+            int prevX = 0;
+            int prevY = 0;
+            for (Vector2D p : sData) {
+                int x = (int)((p.getX() - upperLeftValue.getX()) * pxPerValue);
+                int y = (int)((p.getY() - upperLeftValue.getY()) * pxPerValue);
+                if ( ! firstPass) {
+                    g.drawLine(prevX, prevY, x, y);
                 }
                 
-                prevOffsetPx = offsetPx;
+                prevX = x; prevY = y;
+                firstPass = false;
             }
         }
         
