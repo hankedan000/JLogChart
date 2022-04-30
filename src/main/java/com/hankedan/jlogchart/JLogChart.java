@@ -348,21 +348,19 @@ public class JLogChart extends javax.swing.JPanel implements
          * is yPadding * 2.
          * @return 
          */
-        public void draw(Graphics g, Color background, int x, int y, int xPadding, int yPadding) {
+        public void draw(Graphics g, FontMetrics fm, Color background, int x, int y, int xPadding, int yPadding) {
             g.setColor(background);
-            FontMetrics fm = g.getFontMetrics();
             int textHeight = fm.getHeight();
             int bgWidth = xPadding * 2 + fm.stringWidth(text);
             int bgHeight = yPadding * 2 + textHeight;
             g.fillRect(x, y, bgWidth, bgHeight);
-            draw(g, x, y, xPadding, yPadding);
+            drawText(g, fm, x, y, xPadding, yPadding);
         }
 
         /**
          * See documentation on draw() method for info on x, y, and padding
          */
-        public void draw(Graphics g, int x, int y, int xPadding, int yPadding) {
-            FontMetrics fm = g.getFontMetrics();
+        public void draw(Graphics g, FontMetrics fm, int x, int y, int xPadding, int yPadding) {
             drawText(g, fm, x, y, xPadding, yPadding);
         }
 
@@ -374,12 +372,12 @@ public class JLogChart extends javax.swing.JPanel implements
             g.drawString(text, x + xPadding, y + yPadding + fm.getMaxAscent());
         }
         
-        public Rectangle2D getBoundingBox(Graphics g) {
-            return getBoundingBox(g, 0, 0, 0, 0);
+        public Rectangle2D getBoundingBox(FontMetrics fm) {
+            return getBoundingBox(fm, 0, 0, 0, 0);
         }
         
-        public Rectangle2D getBoundingBox(Graphics g, int xPadding, int yPadding) {
-            return getBoundingBox(g, 0, 0, xPadding, yPadding);
+        public Rectangle2D getBoundingBox(FontMetrics fm, int xPadding, int yPadding) {
+            return getBoundingBox(fm, 0, 0, xPadding, yPadding);
         }
         
         /**
@@ -395,7 +393,8 @@ public class JLogChart extends javax.swing.JPanel implements
          *  | PADDING                                              |
          *  +------------------------------------------------------+
          * 
-         * @param g
+         * @param fm FontMetrics from the Graphics class that the label will be
+         * draw in.
          * 
          * @param x
          * absolute x offset of the upper left corner of the bounding box
@@ -415,8 +414,7 @@ public class JLogChart extends javax.swing.JPanel implements
          * 
          * @return 
          */
-        public Rectangle2D getBoundingBox(Graphics g, int x, int y, int xPadding, int yPadding) {
-            FontMetrics fm = g.getFontMetrics();
+        public Rectangle2D getBoundingBox(FontMetrics fm, int x, int y, int xPadding, int yPadding) {
             int textHeight = fm.getHeight();
             int bgWidth = xPadding * 2 + fm.stringWidth(text);
             int bgHeight = yPadding * 2 + textHeight;
@@ -437,10 +435,11 @@ public class JLogChart extends javax.swing.JPanel implements
         
         public void draw(Graphics g, Color background, DrawOrigin origin, int x, int y, int xPadding, int yPadding) {
             ArrayList<Rectangle2D> relBounds = new ArrayList<>(labels.size());
+            FontMetrics fm = g.getFontMetrics();
             int groupHeight = 0;
             int groupWidth = 0;
             for (Label l : labels) {
-                Rectangle2D lBox = l.getBoundingBox(g, 0, groupHeight, xPadding, yPadding);
+                Rectangle2D lBox = l.getBoundingBox(fm, 0, groupHeight, xPadding, yPadding);
                 groupHeight += lBox.getHeight();
                 groupWidth = max(groupWidth, (int)(lBox.getWidth()));
                 relBounds.add(lBox);
@@ -470,7 +469,7 @@ public class JLogChart extends javax.swing.JPanel implements
             for (int ll=0; ll<labels.size(); ll++) {
                 Label l = labels.get(ll);
                 Rectangle2D lBox = relBounds.get(ll);
-                l.draw(g,(int)(upperLeftX + lBox.getX()), (int)(upperLeftY + lBox.getY()), xPadding, yPadding);
+                l.draw(g, fm, (int)(upperLeftX + lBox.getX()), (int)(upperLeftY + lBox.getY()), xPadding, yPadding);
             }
         }
     }
@@ -602,7 +601,8 @@ public class JLogChart extends javax.swing.JPanel implements
         }
 
         private void drawSeries(Graphics g, Series<Double> series, BoundedRangeModel brm) {
-            if (series.getData() == null) {
+            List<Double> sData = series.getData();
+            if (sData == null) {
                 return;
             }
 
@@ -656,11 +656,12 @@ public class JLogChart extends javax.swing.JPanel implements
                 absIdx = Math.floor(absIdx/sampStride) * sampStride;
             }
             int relIdx = series.getRelSampleIdx((int)absIdx);
-            while (absIdx<=rightViewedSamp && relIdx<series.getData().size()) {
+            int sDataSize = sData.size();
+            while (absIdx<=rightViewedSamp && relIdx<sDataSize) {
                 // Don't draw anything below the FixedRateSeries's absolute range
                 if (relIdx >= 0) {
                     int currX = (int)((absIdx - leftViewedSamp) * pxPerSamp);
-                    int currY = getHeight() - (int)((series.getData().get(relIdx) - minY) * pxPerVal);
+                    int currY = getHeight() - (int)((sData.get(relIdx) - minY) * pxPerVal);
 
                     if (prevX >= 0 && prevY >= 0) {
                         g.drawLine(prevX, prevY, currX, currY);
