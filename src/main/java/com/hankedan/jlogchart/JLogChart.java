@@ -16,18 +16,29 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import static java.lang.Integer.max;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultBoundedRangeModel;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import org.apache.commons.math3.exception.OutOfRangeException;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
@@ -221,6 +232,42 @@ public class JLogChart extends javax.swing.JPanel implements
             }
         }
         return null;
+    }
+    
+    public String toCSV_String() {
+        StringBuilder csvBuilder = new StringBuilder();
+        
+        // cort columns title alphabetically by signalName
+        for (Series<Double> series : allSeries) {
+            csvBuilder.append(series.name).append(",");
+        }
+        csvBuilder.append("\n");
+        
+        for (int absIdx=xRange.getMinimum(); absIdx<xRange.getMaximum(); absIdx++)
+        {
+            for (Series<Double> series : allSeries) {
+                try
+                {
+                    double s = (double)series.getAbsSampleValue(absIdx);
+                    csvBuilder.append(String.format("%f,", s));
+                }
+                catch (OutOfRangeException oor)
+                {
+                    // can get in here if a series doesn't have samples to
+                    // provide within the range of the selection
+                    csvBuilder.append(String.format(","));
+                }
+            }
+            csvBuilder.append("\n");
+        }
+        
+        return csvBuilder.toString();
+    }
+    
+    public void toCSV_File(File csvFile) throws IOException {
+        BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile));
+        writer.write(toCSV_String());
+        writer.close();
     }
     
     public void addMarker(Marker m) {
@@ -474,6 +521,59 @@ public class JLogChart extends javax.swing.JPanel implements
         }
     }
     
+    private class PopupMenu extends JPopupMenu {
+        public final JMenuItem clearMenuItem = new JMenuItem("Clear selections");
+        public final JMenuItem csvMenuItem = new JMenuItem("Save to CSV...");
+        
+        private final JFileChooser fc = new JFileChooser();
+        
+        public PopupMenu() {
+            add(clearMenuItem);
+            add(csvMenuItem);
+            
+            clearMenuItem.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent arg0) {
+                    view.clearSelections();
+                }
+            });
+            
+            csvMenuItem.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent arg0) {
+                    int ret = fc.showSaveDialog(view);
+                    if (ret == JFileChooser.APPROVE_OPTION) {
+                        File file = fc.getSelectedFile();
+                        try {
+                            toCSV_File(file);
+                        } catch (IOException ex) {
+                            Logger.getLogger(JLogChart.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    private class PopClickListener extends MouseAdapter {
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            if (e.isPopupTrigger())
+                doPop(e);
+        }
+
+        @Override
+        public void mousePressed(MouseEvent e) {
+            if (e.isPopupTrigger())
+                doPop(e);
+        }
+        
+        private void doPop(MouseEvent e) {
+            PopupMenu menu = new PopupMenu();
+            menu.show(e.getComponent(), e.getX(), e.getY());
+        }
+    }
+    
     public static void main(String[] args) {
         FlatDarkLaf.install();
         
@@ -579,6 +679,13 @@ public class JLogChart extends javax.swing.JPanel implements
         
         public JLogChartView() {
             addChartViewListener(this);
+            addMouseListener(new PopClickListener());
+        }
+        
+        public void clearSelections() {
+            selectedAbsSample = -1;
+            selectionValid = false;
+            repaint();
         }
         
         private void drawSelectionRange(Graphics g) {
@@ -913,9 +1020,6 @@ public class JLogChart extends javax.swing.JPanel implements
 
         @Override
         public void onRightClicked(MouseEvent e) {
-            selectedAbsSample = -1;
-            selectionValid = false;
-            repaint();
         }
 
         @Override
