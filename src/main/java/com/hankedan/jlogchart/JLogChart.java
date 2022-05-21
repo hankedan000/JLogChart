@@ -234,18 +234,43 @@ public class JLogChart extends javax.swing.JPanel implements
         return null;
     }
     
-    public String toCSV_String() {
+    public String toCSV_String(boolean visibleOnly) {
         StringBuilder csvBuilder = new StringBuilder();
+        int absX_Min = Integer.MAX_VALUE;
+        int absX_Max = Integer.MIN_VALUE;
+        boolean seriesFound = false;
         
-        // cort columns title alphabetically by signalName
+        csvBuilder.append("\"rel_time (s)\"").append(",");
+        csvBuilder.append("\"abs_time (s)\"").append(",");
         for (Series<Double> series : allSeries) {
-            csvBuilder.append(series.name).append(",");
+            // skip over invisible series if 'visibleOnly'
+            if (visibleOnly && ! series.getVisible()) {
+                continue;
+            }
+            
+            csvBuilder.append("\"").append(series.name).append("\",");
+            absX_Min = Integer.min(absX_Min, series.getOffset());
+            absX_Max = Integer.max(absX_Max, series.getOffset() + series.getData().size());
+            seriesFound = true;
         }
         csvBuilder.append("\n");
         
-        for (int absIdx=xRange.getMinimum(); absIdx<xRange.getMaximum(); absIdx++)
+        // don't both going any further. no visible series to save.
+        if ( ! seriesFound) {
+            return "";
+        }
+        
+        double relTime = 0.0;
+        double absTime = absX_Min * dt;
+        for (int absIdx=absX_Min; absIdx<absX_Max; absIdx++, relTime+=dt, absTime+=dt)
         {
+            csvBuilder.append(String.format("%f,%f,",relTime,absTime));
             for (Series<Double> series : allSeries) {
+                // skip over invisible series if 'visibleOnly'
+                if (visibleOnly && ! series.getVisible()) {
+                    continue;
+                }
+                
                 try
                 {
                     double s = (double)series.getAbsSampleValue(absIdx);
@@ -264,9 +289,9 @@ public class JLogChart extends javax.swing.JPanel implements
         return csvBuilder.toString();
     }
     
-    public void toCSV_File(File csvFile) throws IOException {
+    public void toCSV_File(File csvFile, boolean visibleOnly) throws IOException {
         BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile));
-        writer.write(toCSV_String());
+        writer.write(toCSV_String(visibleOnly));
         writer.close();
     }
     
@@ -545,7 +570,7 @@ public class JLogChart extends javax.swing.JPanel implements
                     if (ret == JFileChooser.APPROVE_OPTION) {
                         File file = fc.getSelectedFile();
                         try {
-                            toCSV_File(file);
+                            toCSV_File(file,true);
                         } catch (IOException ex) {
                             Logger.getLogger(JLogChart.class.getName()).log(Level.SEVERE, null, ex);
                         }
