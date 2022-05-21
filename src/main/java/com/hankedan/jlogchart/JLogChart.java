@@ -702,6 +702,8 @@ public class JLogChart extends javax.swing.JPanel implements
         // A "full view" image of all the series used for minimap scrollbar
         private BufferedImage miniMapImage = null;
         
+        private GridImage gridImage = null;
+        
         public JLogChartView() {
             addChartViewListener(this);
             addMouseListener(new PopClickListener());
@@ -976,6 +978,34 @@ public class JLogChart extends javax.swing.JPanel implements
             view.drawVisibleSeries(g, fullView);
         }
         
+        private void updateGridImage() {
+            int w = getWidth();
+            int h = getHeight();
+            // We can't generate images if view has no width or height
+            if (w == 0 || h == 0) {
+                gridImage = null;
+                return;
+            }
+            
+            // see if we need a new BufferedImage (first time or resized)
+            boolean needNewImg = false;
+            if (gridImage == null) {
+                needNewImg = true;
+            } else if (gridImage.getWidth() != w || gridImage.getHeight() != h) {
+                needNewImg = true;
+            }
+            if (needNewImg) {
+                gridImage = new GridImage(w, h);
+            }
+            
+            int N_HORZ_RULES = 9;
+            gridImage.setRuleVisibilty(true, false);
+            gridImage.setOriginLocation(0, (int)(h/2.0));
+            gridImage.setVertScale(minValueY, maxValueY);
+            gridImage.setMajorRuleStride((maxValueY-minValueY)/(N_HORZ_RULES+2), 0);// +2 for top/bottom rules on screen boundaries
+            gridImage.draw();
+        }
+        
         private void updateSeriesImage() {
             int w = getWidth();
             int h = getHeight();
@@ -997,17 +1027,25 @@ public class JLogChart extends javax.swing.JPanel implements
             }
             
             // Paint an image for the zoomed chart view
-            Graphics g = seriesImage.getGraphics();
-            g.setColor(BG_COLOR);
-            g.fillRect(0, 0, w, h);
-            drawVisibleSeries(g, xRange);
+            Graphics2D g2 = (Graphics2D)seriesImage.getGraphics();
+            g2.setBackground(new Color(255,255,255,0));
+            g2.clearRect(0, 0, w, h);
+            drawVisibleSeries(g2, xRange);
         }
         
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             
+            Graphics2D g2 = (Graphics2D)g;
+            
             // Draw the chart view
+            g2.setColor(BG_COLOR);
+            g2.fillRect(0, 0, getWidth(), getHeight());
+            updateGridImage();
+            if (gridImage != null) {
+                g.drawImage(gridImage, 0, 0, null);
+            }
             updateSeriesImage();
             if (seriesImage != null) {
                 g.drawImage(seriesImage, 0, 0, null);
