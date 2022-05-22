@@ -548,18 +548,28 @@ public class JLogChart extends javax.swing.JPanel implements
     
     private class PopupMenu extends JPopupMenu {
         public final JMenuItem clearMenuItem = new JMenuItem("Clear selections");
+        public final JMenuItem gridVisibleMenuItem = new JMenuItem("Toggle grid visible");
         public final JMenuItem csvMenuItem = new JMenuItem("Save to CSV...");
         
         private final JFileChooser fc = new JFileChooser();
         
         public PopupMenu() {
             add(clearMenuItem);
+            add(gridVisibleMenuItem);
             add(csvMenuItem);
             
             clearMenuItem.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent arg0) {
                     view.clearSelections();
+                }
+            });
+            
+            gridVisibleMenuItem.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent arg0) {
+                    // toggle the grid's visibility
+                    view.setGridVisible( ! view.getGridVisible());
                 }
             });
             
@@ -694,6 +704,12 @@ public class JLogChart extends javax.swing.JPanel implements
         private final int CHART_MARGIN = 3;// margin around chart to keep out of
         private final Color BG_COLOR = new Color(60, 63, 65);// dark grey
         private final Color OVERLAY_BG_COLOR = new Color(0, 0, 0, 100);
+        
+        // enable/disable the drawing of the chart's grid
+        private boolean gridVisible = true;
+        
+        // A BufferedImage contains horz/vert line rules under the chart
+        private GridImage gridImage = null;
     
         // the live drawn image of the series data
         // drawing to a BufferedImage is faster than drawing to screen graphics
@@ -702,11 +718,21 @@ public class JLogChart extends javax.swing.JPanel implements
         // A "full view" image of all the series used for minimap scrollbar
         private BufferedImage miniMapImage = null;
         
-        private GridImage gridImage = null;
-        
         public JLogChartView() {
             addChartViewListener(this);
             addMouseListener(new PopClickListener());
+        }
+        
+        public void setGridVisible(boolean visible) {
+            boolean oldVal = gridVisible;
+            gridVisible = visible;
+            if (oldVal != gridVisible) {
+                repaint();
+            }
+        }
+        
+        public boolean getGridVisible() {
+            return gridVisible;
         }
         
         public void clearSelections() {
@@ -1046,9 +1072,11 @@ public class JLogChart extends javax.swing.JPanel implements
             // Draw the chart view
             g2.setColor(BG_COLOR);
             g2.fillRect(0, 0, getWidth(), getHeight());
-            updateGridImage();
-            if (gridImage != null) {
-                g.drawImage(gridImage, 0, 0, null);
+            if (gridVisible) {
+                updateGridImage();
+                if (gridImage != null) {
+                    g.drawImage(gridImage, 0, 0, null);
+                }
             }
             updateSeriesImage();
             if (seriesImage != null) {
