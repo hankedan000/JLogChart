@@ -63,6 +63,10 @@ public class GridImage extends BufferedImage {
         return this;
     }
     
+    public boolean getHorzRuleVisible() {
+        return hRuleVisible;
+    }
+    
     /**
      * Set visibility of the vertical rules
      * @param visible
@@ -73,6 +77,10 @@ public class GridImage extends BufferedImage {
     public GridImage setVertRuleVisible(boolean visible) {
         vRuleVisible = visible;
         return this;
+    }
+    
+    public boolean getVertRuleVisible() {
+        return vRuleVisible;
     }
     
     /**
@@ -158,6 +166,8 @@ public class GridImage extends BufferedImage {
             return;
         } else if (hFullScale == 0) {
             return;
+        } else if (hMajorRuleStride == 0) {
+            return;
         }
         
         Graphics2D g2 = (Graphics2D)getGraphics();
@@ -192,6 +202,8 @@ public class GridImage extends BufferedImage {
         if (vFullScale == 0) {
             return;
         } else if (hFullScale == 0) {
+            return;
+        } else if (vMajorRuleStride == 0) {
             return;
         }
         

@@ -29,12 +29,13 @@ import java.io.IOException;
 import static java.lang.Integer.max;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultBoundedRangeModel;
+import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
@@ -548,14 +549,16 @@ public class JLogChart extends javax.swing.JPanel implements
     
     private class PopupMenu extends JPopupMenu {
         public final JMenuItem clearMenuItem = new JMenuItem("Clear selections");
-        public final JMenuItem gridVisibleMenuItem = new JMenuItem("Toggle grid visible");
+        public final JMenuItem hRuleVisibleMenuItem = new JCheckBoxMenuItem("Horizontal grid");
+        public final JMenuItem vRuleVisibleMenuItem = new JCheckBoxMenuItem("Vertical grid");
         public final JMenuItem csvMenuItem = new JMenuItem("Save to CSV...");
         
         private final JFileChooser fc = new JFileChooser();
         
         public PopupMenu() {
             add(clearMenuItem);
-            add(gridVisibleMenuItem);
+            add(hRuleVisibleMenuItem);
+            add(vRuleVisibleMenuItem);
             add(csvMenuItem);
             
             clearMenuItem.addActionListener(new ActionListener() {
@@ -565,11 +568,19 @@ public class JLogChart extends javax.swing.JPanel implements
                 }
             });
             
-            gridVisibleMenuItem.addActionListener(new ActionListener() {
+            hRuleVisibleMenuItem.getModel().setSelected(view.getHorzRuleVisible());
+            hRuleVisibleMenuItem.addActionListener(new ActionListener() {
                 @Override
-                public void actionPerformed(ActionEvent arg0) {
-                    // toggle the grid's visibility
-                    view.setGridVisible( ! view.getGridVisible());
+                public void actionPerformed(ActionEvent evt) {
+                    view.setHorzRuleVisible(hRuleVisibleMenuItem.getModel().isSelected());
+                }
+            });
+            
+            vRuleVisibleMenuItem.getModel().setSelected(view.getVertRuleVisible());
+            vRuleVisibleMenuItem.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent evt) {
+                    view.setVertRuleVisible(vRuleVisibleMenuItem.getModel().isSelected());
                 }
             });
             
@@ -705,10 +716,9 @@ public class JLogChart extends javax.swing.JPanel implements
         private final Color BG_COLOR = new Color(60, 63, 65);// dark grey
         private final Color OVERLAY_BG_COLOR = new Color(0, 0, 0, 100);
         
-        // enable/disable the drawing of the chart's grid
-        private boolean gridVisible = true;
-        
         // A BufferedImage contains horz/vert line rules under the chart
+        private boolean hRuleVisible = true;
+        private boolean vRuleVisible = false;
         private GridImage gridImage = null;
     
         // the live drawn image of the series data
@@ -723,16 +733,28 @@ public class JLogChart extends javax.swing.JPanel implements
             addMouseListener(new PopClickListener());
         }
         
-        public void setGridVisible(boolean visible) {
-            boolean oldVal = gridVisible;
-            gridVisible = visible;
-            if (oldVal != gridVisible) {
+        public void setHorzRuleVisible(boolean visible) {
+            boolean oldVal = hRuleVisible;
+            hRuleVisible = visible;
+            if (oldVal != hRuleVisible) {
                 repaint();
             }
         }
         
-        public boolean getGridVisible() {
-            return gridVisible;
+        public boolean getHorzRuleVisible() {
+            return hRuleVisible;
+        }
+        
+        public void setVertRuleVisible(boolean visible) {
+            boolean oldVal = vRuleVisible;
+            vRuleVisible = visible;
+            if (oldVal != vRuleVisible) {
+                repaint();
+            }
+        }
+        
+        public boolean getVertRuleVisible() {
+            return vRuleVisible;
         }
         
         public void clearSelections() {
@@ -1026,11 +1048,16 @@ public class JLogChart extends javax.swing.JPanel implements
                 gridImage.clear();
             }
             
-            int N_HORZ_RULES = 9;
-            gridImage.setRuleVisibilty(true, false);
+            final int HORZ_DIVIDE = 9 + 2;// 9 visible, 2 on screen boundaries
+            final int VERT_DIVIDE = 9 + 2;// 9 visible, 2 on screen boundaries
+            final double minValueX = view.leftViewedSamp() * dt;
+            final double maxValueX = view.rightViewedSamp() * dt;
+            final double hRuleStride = (maxValueY - minValueY) / HORZ_DIVIDE;
+            final double vRuleStride = (maxValueX - minValueX) / VERT_DIVIDE;
+            gridImage.setRuleVisibilty(hRuleVisible, vRuleVisible);
             gridImage.setVertScale(minValueY, maxValueY);
-            gridImage.setHorzScale(view.leftViewedSamp() * dt, view.rightViewedSamp() * dt);
-            gridImage.setMajorRuleStride((maxValueY-minValueY)/(N_HORZ_RULES+2), 0);// +2 for top/bottom rules on screen boundaries
+            gridImage.setHorzScale(minValueX, maxValueX);
+            gridImage.setMajorRuleStride(hRuleStride, vRuleStride);
             gridImage.draw();
         }
         
@@ -1072,7 +1099,7 @@ public class JLogChart extends javax.swing.JPanel implements
             // Draw the chart view
             g2.setColor(BG_COLOR);
             g2.fillRect(0, 0, getWidth(), getHeight());
-            if (gridVisible) {
+            if (vRuleVisible || hRuleVisible) {
                 updateGridImage();
                 if (gridImage != null) {
                     g.drawImage(gridImage, 0, 0, null);
