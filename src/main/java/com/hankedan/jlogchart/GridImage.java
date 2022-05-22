@@ -30,10 +30,22 @@ public class GridImage extends BufferedImage {
     private BasicStroke originStroke = new BasicStroke(2);
     private BasicStroke majorStroke = new BasicStroke(1);
 
+    /**
+     * Constructs a new GridImage with the provided dimensions
+     * @param width
+     * width of the image in pixels
+     * @param height 
+     * height of the image in pixels
+     */
     public GridImage(int width, int height) {
         super(width,height,BufferedImage.TYPE_4BYTE_ABGR);
     }
     
+    /**
+     * Clears the image for a fresh draw() call
+     * @return 
+     * a reference to the GridImage
+     */
     public GridImage clear() {
         Graphics2D g2 = (Graphics2D)getGraphics();
         g2.setBackground(new Color(0,0,0,0));
@@ -41,16 +53,39 @@ public class GridImage extends BufferedImage {
         return this;
     }
     
+    /**
+     * Set visibility of the horizontal rules
+     * @param visible
+     * true if the horizontal rules should be drawn; false if not.
+     * @return 
+     * a reference to the GridImage
+     */
     public GridImage setHorzRuleVisible(boolean visible) {
         hRuleVisible = visible;
         return this;
     }
     
+    /**
+     * Set visibility of the vertical rules
+     * @param visible
+     * true if the vertical rules should be drawn; false if not.
+     * @return 
+     * a reference to the GridImage
+     */
     public GridImage setVertRuleVisible(boolean visible) {
         vRuleVisible = visible;
         return this;
     }
     
+    /**
+     * Set visibility of the horizontal/vertical rules
+     * @param hVisible
+     * true if the horizontal rules should be drawn; false if not.
+     * @param vVisible
+     * true if the vertical rules should be drawn; false if not.
+     * @return 
+     * a reference to the GridImage
+     */
     public GridImage setRuleVisibilty(boolean hVisible, boolean vVisible) {
         setHorzRuleVisible(hVisible);
         setVertRuleVisible(vVisible);
@@ -63,24 +98,56 @@ public class GridImage extends BufferedImage {
         return this;
     }
     
+    /**
+     * Set the full scale of the x-axis
+     * @param min
+     * the lowest value on the x-axis (left side of chart)
+     * @param max
+     * the highest value on the x-axis (right side of chart)
+     * @return
+     * a reference to the GridImage
+     */
     public GridImage setHorzScale(double min, double max) {
         hScaleMin = min;
         hScaleMax = max;
         return this;
     }
     
+    /**
+     * Set the full scale of the y-axis
+     * @param min
+     * the lowest value on the y-axis (bottom of chart)
+     * @param max
+     * the highest value on the y-axis (top of chart)
+     * @return 
+     * a reference to the GridImage
+     */
     public GridImage setVertScale(double min, double max) {
         vScaleMin = min;
         vScaleMax = max;
         return this;
     }
     
+    /**
+     * Set the distance between major-rule lines
+     * @param hStride
+     * the vertical distance (in value, not pixels) between horizontal rules
+     * @param vStride
+     * the horizontal distance (in value, not pixels) between vertical rules
+     * @return 
+     * a reference to the GridImage
+     */
     public GridImage setMajorRuleStride(double hStride, double vStride) {
         hMajorRuleStride = hStride;
         vMajorRuleStride = vStride;
         return this;
     }
     
+    /**
+     * Issues a full draw of the GridImage based on the most resent parameters
+     * @return 
+     * a reference to the GridImage
+     */
     public GridImage draw() {
         if (hRuleVisible) {
             drawH_Rules();
