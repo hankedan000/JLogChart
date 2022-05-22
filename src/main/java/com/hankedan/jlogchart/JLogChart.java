@@ -996,6 +996,8 @@ public class JLogChart extends javax.swing.JPanel implements
             }
             if (needNewImg) {
                 gridImage = new GridImage(w, h);
+            } else {
+                gridImage.clear();
             }
             
             int N_HORZ_RULES = 9;
@@ -1028,8 +1030,10 @@ public class JLogChart extends javax.swing.JPanel implements
             
             // Paint an image for the zoomed chart view
             Graphics2D g2 = (Graphics2D)seriesImage.getGraphics();
-            g2.setBackground(new Color(255,255,255,0));
-            g2.clearRect(0, 0, w, h);
+            if ( ! needNewImg) {
+                g2.setBackground(new Color(0,0,0,0));
+                g2.clearRect(0, 0, w, h);
+            }
             drawVisibleSeries(g2, xRange);
         }
         

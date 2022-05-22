@@ -34,6 +34,13 @@ public class GridImage extends BufferedImage {
         super(width,height,BufferedImage.TYPE_4BYTE_ABGR);
     }
     
+    public GridImage clear() {
+        Graphics2D g2 = (Graphics2D)getGraphics();
+        g2.setBackground(new Color(0,0,0,0));
+        g2.clearRect(0, 0, getWidth(), getHeight());
+        return this;
+    }
+    
     public GridImage setHorzRuleVisible(boolean visible) {
         hRuleVisible = visible;
         return this;
