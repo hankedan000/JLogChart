@@ -1028,8 +1028,8 @@ public class JLogChart extends javax.swing.JPanel implements
             
             int N_HORZ_RULES = 9;
             gridImage.setRuleVisibilty(true, false);
-            gridImage.setOriginLocation(0, (int)(h/2.0));
             gridImage.setVertScale(minValueY, maxValueY);
+            gridImage.setHorzScale(view.leftViewedSamp() * dt, view.rightViewedSamp() * dt);
             gridImage.setMajorRuleStride((maxValueY-minValueY)/(N_HORZ_RULES+2), 0);// +2 for top/bottom rules on screen boundaries
             gridImage.draw();
         }

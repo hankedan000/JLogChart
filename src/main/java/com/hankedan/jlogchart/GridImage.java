@@ -18,8 +18,6 @@ import java.awt.image.BufferedImage;
 public class GridImage extends BufferedImage {
     private boolean hRuleVisible = true;
     private boolean vRuleVisible = true;
-    private int originX = 0;
-    private int originY = 0;
     private double hScaleMin = 0;
     private double hScaleMax = 0;
     private double vScaleMin = 0;
@@ -92,12 +90,6 @@ public class GridImage extends BufferedImage {
         return this;
     }
     
-    public GridImage setOriginLocation(int x, int y) {
-        originX = x;
-        originY = y;
-        return this;
-    }
-    
     /**
      * Set the full scale of the x-axis
      * @param min
@@ -160,72 +152,72 @@ public class GridImage extends BufferedImage {
     }
     
     private void drawH_Rules() {
-        double valueDelta = Math.abs(vScaleMax - vScaleMin);
-        if (valueDelta == 0) {
+        double vFullScale = Math.abs(vScaleMax - vScaleMin);
+        double hFullScale = Math.abs(hScaleMax - hScaleMin);
+        if (vFullScale == 0) {
+            return;
+        } else if (hFullScale == 0) {
             return;
         }
         
         Graphics2D g2 = (Graphics2D)getGraphics();
-        double pxPerValue = getHeight() / valueDelta;
+        double yPxPerValue = getHeight() / vFullScale;
+        double xPxPerValue = getWidth() / hFullScale;
+        double valuePerPx = 1.0 / yPxPerValue;
         
-        // draw origin line
-        double originValueY = vScaleMax - originY / pxPerValue;
-        double yVal = originValueY;
-        int yPx= (int)((vScaleMax - yVal) * pxPerValue);
+        double yVal = Math.floor(vScaleMax / hMajorRuleStride) * hMajorRuleStride;
+        int yPx= (int)((vScaleMax - yVal) * yPxPerValue);
+        // draw labels on origin line, or at border if origin is off screen
+        int labelX = (int)((0.0 - hScaleMin) * xPxPerValue);
+        labelX = Math.max(labelX, 0);// clamp to left of screen
+        labelX = Math.min(labelX, getWidth());// or clamp to right of screen
+        
+        // draw horizontal rules
         g2.setColor(Color.BLACK);
-        g2.setStroke(originStroke);
-        g2.drawLine(0, yPx, getWidth(), yPx);
-        
-        // draw major lines
-        g2.setStroke(majorStroke);
-        yVal += hMajorRuleStride; yPx= (int)((vScaleMax - yVal) * pxPerValue);// advance past origin
-        while (yPx >= 0) {
-            g2.drawLine(0, yPx, getWidth(), yPx);
-            g2.drawString(String.format("%.2f",yVal), originX + 2, yPx - 2);
-            yVal += hMajorRuleStride; yPx= (int)((vScaleMax - yVal) * pxPerValue);
-        }
-        
-        yVal = originValueY;
-        yVal -= hMajorRuleStride; yPx= (int)((vScaleMax - yVal) * pxPerValue);// advance past origin
         while (yPx < getHeight()) {
+            if (Math.abs(yVal) < valuePerPx) {
+                g2.setStroke(originStroke);
+            } else {
+                g2.setStroke(majorStroke);
+                g2.drawString(String.format("%.2f",yVal), labelX + 2, yPx - 2);
+            }
             g2.drawLine(0, yPx, getWidth(), yPx);
-            g2.drawString(String.format("%.2f",yVal), originX + 2, yPx - 2);
-            yVal -= hMajorRuleStride; yPx= (int)((vScaleMax - yVal) * pxPerValue);
+            yVal -= hMajorRuleStride; yPx= (int)((vScaleMax - yVal) * yPxPerValue);
         }
     }
     
     private void drawV_Rules() {
-        double valueDelta = Math.abs(hScaleMax - hScaleMin);
-        if (valueDelta == 0) {
+        double vFullScale = Math.abs(vScaleMax - vScaleMin);
+        double hFullScale = Math.abs(hScaleMax - hScaleMin);
+        if (vFullScale == 0) {
+            return;
+        } else if (hFullScale == 0) {
             return;
         }
         
         Graphics2D g2 = (Graphics2D)getGraphics();
-        double pxPerValue = getWidth()/ valueDelta;
+        double yPxPerValue = getHeight() / vFullScale;
+        double xPxPerValue = getWidth() / hFullScale;
+        double valuePerPx = 1.0 / xPxPerValue;
         
-        // draw origin line
-        double originValueX = hScaleMin + originX / pxPerValue;
-        double xVal = originValueX;
-        int xPx= (int)((xVal - hScaleMin) * pxPerValue);
+        double xVal = Math.floor(hScaleMin / vMajorRuleStride) * vMajorRuleStride;
+        int xPx= (int)((xVal - hScaleMin) * xPxPerValue);
+        // draw labels on origin line, or at border if origin is off screen
+        int labelY = (int)((vScaleMax - 0.0) * yPxPerValue);
+        labelY = Math.max(labelY, 0);// clamp to top of screen
+        labelY = Math.min(labelY, getHeight());// or clamp to bottom of screen
+        
+        // draw vertical rules
         g2.setColor(Color.BLACK);
-        g2.setStroke(originStroke);
-        g2.drawLine(xPx, 0, xPx, getHeight());
-        
-        // draw major lines
-        g2.setStroke(majorStroke);
-        xVal += vMajorRuleStride; xPx= (int)((xVal - hScaleMin) * pxPerValue);// advance past origin
         while (xPx < getWidth()) {
+            if (Math.abs(xVal) < valuePerPx) {
+                g2.setStroke(originStroke);
+            } else {
+                g2.setStroke(majorStroke);
+                g2.drawString(String.format("%.2f",xVal), xPx + 2, labelY - 2);
+            }
             g2.drawLine(xPx, 0, xPx, getHeight());
-            g2.drawString(String.format("%.2f",xVal), xPx + 2, originY - 2);
-            xVal += vMajorRuleStride; xPx= (int)((xVal - hScaleMin) * pxPerValue);
-        }
-        
-        xVal = originValueX;
-        xVal -= vMajorRuleStride; xPx= (int)((xVal - hScaleMin) * pxPerValue);// advance past origin
-        while (xPx > 0) {
-            g2.drawLine(xPx, 0, xPx, getHeight());
-            g2.drawString(String.format("%.2f",xVal), xPx + 2, originY - 2);
-            xVal -= vMajorRuleStride; xPx= (int)((xVal - hScaleMin) * pxPerValue);
+            xVal += vMajorRuleStride; xPx= (int)((xVal - hScaleMin) * xPxPerValue);
         }
     }
 }

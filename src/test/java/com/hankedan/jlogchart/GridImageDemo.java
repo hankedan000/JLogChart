@@ -5,6 +5,7 @@
  */
 package com.hankedan.jlogchart;
 
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 
@@ -13,7 +14,7 @@ import java.awt.Graphics2D;
  * @author daniel
  */
 public class GridImageDemo extends javax.swing.JFrame {
-    GridImage gi;
+    GridImage simpleGI;
 
     /**
      * Creates new form GridImageDemo
@@ -26,15 +27,16 @@ public class GridImageDemo extends javax.swing.JFrame {
     public void paint(Graphics g) {
         super.paint(g);
         
-        gi = new GridImage(getWidth(), getHeight());
-        gi.setVertScale(-10, 10);
-        gi.setHorzScale(-100, 100);
-        gi.setRuleVisibilty(true,true);
-        gi.setMajorRuleStride(2, 20);
-        gi.setOriginLocation((int)(getWidth()/2.0), (int)(getHeight()/2.0));
-        gi.draw();
+        Graphics simpleGraphics = simplePanel.getGraphics();
+        Dimension simpleDim = simplePanel.getSize();
+        simpleGI = new GridImage(simpleDim.width, simpleDim.height);
+        simpleGI.setVertScale(-10, 10);
+        simpleGI.setHorzScale(-100, 100);
+        simpleGI.setRuleVisibilty(true,true);
+        simpleGI.setMajorRuleStride(2, 20);
+        simpleGI.draw();
         
-        g.drawImage(gi, 0, 0, this);
+        simpleGraphics.drawImage(simpleGI, 0, 0, this);
     }
 
     /**
@@ -46,18 +48,39 @@ public class GridImageDemo extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        jTabbedPane1 = new javax.swing.JTabbedPane();
+        simplePanel = new javax.swing.JPanel();
+        originAbovePanel = new javax.swing.JPanel();
+
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
+        javax.swing.GroupLayout simplePanelLayout = new javax.swing.GroupLayout(simplePanel);
+        simplePanel.setLayout(simplePanelLayout);
+        simplePanelLayout.setHorizontalGroup(
+            simplePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 398, Short.MAX_VALUE)
         );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 300, Short.MAX_VALUE)
+        simplePanelLayout.setVerticalGroup(
+            simplePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 273, Short.MAX_VALUE)
         );
+
+        jTabbedPane1.addTab("Simple", simplePanel);
+
+        javax.swing.GroupLayout originAbovePanelLayout = new javax.swing.GroupLayout(originAbovePanel);
+        originAbovePanel.setLayout(originAbovePanelLayout);
+        originAbovePanelLayout.setHorizontalGroup(
+            originAbovePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 398, Short.MAX_VALUE)
+        );
+        originAbovePanelLayout.setVerticalGroup(
+            originAbovePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 273, Short.MAX_VALUE)
+        );
+
+        jTabbedPane1.addTab("Origin Above", originAbovePanel);
+
+        getContentPane().add(jTabbedPane1, java.awt.BorderLayout.CENTER);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -98,5 +121,8 @@ public class GridImageDemo extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JTabbedPane jTabbedPane1;
+    private javax.swing.JPanel originAbovePanel;
+    private javax.swing.JPanel simplePanel;
     // End of variables declaration//GEN-END:variables
 }
