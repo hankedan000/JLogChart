@@ -17,6 +17,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
@@ -265,6 +266,10 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         // Set to true when the middle mouse was pressed on the dragStarted
         private boolean panOnDrag = false;
         
+        // Mouse location in pixels, relative to XY_Chart's upper left corner
+        private Vector2D mousePosPx = null;
+        private boolean mouseLocationVisible = true;
+        
         public XY_ChartView() {
             addChartViewListener(this);
             addMouseWheelListener(this);
@@ -316,6 +321,18 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             upperLeftLocation = middle.subtract(dispDiag.scalarMultiply(0.5/pxPerValue));
             
             repaint();
+        }
+        
+        public void setMouseLocationVisbile(boolean visible) {
+            boolean oldValue = mouseLocationVisible;
+            mouseLocationVisible = visible;
+            if (oldValue != mouseLocationVisible) {
+                repaint();
+            }
+        }
+        
+        public boolean getMouseLocationVisible() {
+            return mouseLocationVisible;
         }
 
         private void drawSeries(Graphics g, Vector2D upperLeftValue, Series<Vector2D> series) {
@@ -376,6 +393,15 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         private void drawFloatingMarkers(Graphics g, Vector2D upperLeftValue) {
             for (Marker m : markerMgr.getAllFloatingMarkers()) {
                 drawMarker(g, upperLeftValue, m);
+            }
+        }
+        
+        private void drawOverlays(Graphics g, Vector2D upperLeftValue) {
+            if (mousePosPx != null && mouseLocationVisible) {
+                Vector2D mousePosVal = upperLeftValue.add(px2val(mousePosPx));
+                
+                String locStr = String.format("x: %+f; y: %+f", mousePosVal.getX(), mousePosVal.getY());
+                g.drawString(locStr, 10, getHeight() - 10);
             }
         }
         
@@ -451,6 +477,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             
             drawSeriesBoundMarkers(g, upperLeftValue);
             drawFloatingMarkers(g, upperLeftValue);
+            drawOverlays(g, upperLeftValue);
         }
 
         @Override
@@ -515,20 +542,40 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             boolean zoomIn = e.getWheelRotation() < 0;
             xyChartZoom(zoomIn, VectorUtils.toVector(e), ZOOM_AMOUNT);
         }
+
+        @Override
+        public void mouseMoved(MouseEvent e) {
+            super.mouseMoved(e);
+            updateMousePosition(e);
+        }
+
+        @Override
+        public void mouseDragged(MouseEvent e) {
+            super.mouseDragged(e);
+            updateMousePosition(e);
+        }
         
+        private void updateMousePosition(MouseEvent e) {
+            mousePosPx = new Vector2D(e.getX(),e.getY());
+            if (mouseLocationVisible) {
+                repaint();
+            }
+        }
     }
     
     private class PopupMenu extends JPopupMenu {
-        public final JMenuItem locationVisibleMenuItem = new JCheckBoxMenuItem("Location Label");
+        public final JMenuItem locationVisibleMenuItem = new JCheckBoxMenuItem("Mouse location visible");
         
         private final JFileChooser fc = new JFileChooser();
         
         public PopupMenu() {
             add(locationVisibleMenuItem);
             
+            locationVisibleMenuItem.getModel().setSelected(view.getMouseLocationVisible());
             locationVisibleMenuItem.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent arg0) {
+                    view.setMouseLocationVisbile(locationVisibleMenuItem.getModel().isSelected());
                 }
             });
         }
