@@ -13,6 +13,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
@@ -21,6 +24,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JFileChooser;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
 
 /**
@@ -261,6 +268,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         public XY_ChartView() {
             addChartViewListener(this);
             addMouseWheelListener(this);
+            addMouseListener(new PopClickListener());
         }
         
         /**
@@ -508,6 +516,41 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             xyChartZoom(zoomIn, VectorUtils.toVector(e), ZOOM_AMOUNT);
         }
         
+    }
+    
+    private class PopupMenu extends JPopupMenu {
+        public final JMenuItem locationVisibleMenuItem = new JCheckBoxMenuItem("Location Label");
+        
+        private final JFileChooser fc = new JFileChooser();
+        
+        public PopupMenu() {
+            add(locationVisibleMenuItem);
+            
+            locationVisibleMenuItem.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent arg0) {
+                }
+            });
+        }
+    }
+    
+    private class PopClickListener extends MouseAdapter {
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            if (e.isPopupTrigger())
+                doPop(e);
+        }
+
+        @Override
+        public void mousePressed(MouseEvent e) {
+            if (e.isPopupTrigger())
+                doPop(e);
+        }
+        
+        private void doPop(MouseEvent e) {
+            PopupMenu menu = new PopupMenu();
+            menu.show(e.getComponent(), e.getX(), e.getY());
+        }
     }
     
     /**
