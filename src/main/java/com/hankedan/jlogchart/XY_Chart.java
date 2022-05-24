@@ -576,6 +576,10 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         }
 
         @Override
+        public void onMouseMotion(MouseEvent e) {
+        }
+
+        @Override
         public void mouseWheelMoved(MouseWheelEvent e) {
             double ZOOM_AMOUNT = 0.2;
             boolean zoomIn = e.getWheelRotation() < 0;

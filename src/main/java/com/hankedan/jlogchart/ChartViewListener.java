@@ -22,4 +22,5 @@ public interface ChartViewListener {
     public void onDragging(MouseEvent e1, MouseEvent e2);
     public void onDragComplete(int startAbsSample, int stopAbsSample);
     public void onDragComplete(MouseEvent e1, MouseEvent e2);
+    public void onMouseMotion(MouseEvent e);
 }

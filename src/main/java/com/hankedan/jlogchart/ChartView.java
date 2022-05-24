@@ -496,6 +496,14 @@ public class ChartView extends JPanel implements MouseWheelListener,
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        // Notify any listeners of the drag start/complete event
+        for (ChartViewListener cvl : listeners) {
+            if (cvl == null) {
+                continue;
+            }
+
+            cvl.onMouseMotion(e);
+        }
     }
 
     @Override
