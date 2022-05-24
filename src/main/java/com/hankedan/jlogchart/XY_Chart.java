@@ -94,6 +94,15 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         return view;
     }
     
+    /**
+     * Returns the XY location of the visible pixel location
+     * @param xyPixel
+     * @return 
+     */
+    public Vector2D getXY_Value(Vector2D xyPixel) {
+        return view.px2val_global(xyPixel);
+    }
+    
     public void clear() {
         allSeries.clear();
         markerMgr.clear();
@@ -411,8 +420,32 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             }
         }
         
+        /**
+         * Converts an x,y location in visible pixel space to and x,y location
+         * in "value" space where (0,0) is the upper left corner of the chart.
+         * @param pxVect
+         * x,y location to convert to value space
+         * @return 
+         * the converted vector
+         */
         private Vector2D px2val(Vector2D pxVect) {
             return pxVect.scalarMultiply(1.0 / pxPerValue);
+        }
+        
+        /**
+         * Converts an x,y location in visible pixel space to and x,y location
+         * in the chart's global "value" space
+         * @param pxVect
+         * x,y location to convert to value space
+         * @return 
+         * the converted vector
+         */
+        private Vector2D px2val_global(Vector2D pxVect) {
+            Vector2D upperLeft = upperLeftLocation;
+            if (dragVectorPx != null) {
+                upperLeft = upperLeftLocation.subtract(px2val(dragVectorPx));
+            }
+            return upperLeft.add(px2val(pxVect));
         }
         
         private Vector2D val2px(Vector2D valVect) {
