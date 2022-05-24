@@ -5,6 +5,7 @@
  */
 package com.hankedan.jlogchart;
 
+import com.hankedan.jlogchart.LabelGroup.DrawOrigin;
 import com.hankedan.jlogchart.util.ColorPalette;
 import com.hankedan.jlogchart.util.ColorPalette.WrapBehavior;
 import com.hankedan.jlogchart.util.VectorUtils;
@@ -248,6 +249,8 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
     }
     
     private class XY_ChartView extends ChartView implements ChartViewListener, MouseWheelListener {
+        private final Color OVERLAY_BG_COLOR = new Color(0, 0, 0, 100);
+        
         /**
          * Pixels per series value in the x and y direction. This value changes
          * with zooming.
@@ -269,6 +272,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         // Mouse location in pixels, relative to XY_Chart's upper left corner
         private Vector2D mousePosPx = null;
         private boolean mouseLocationVisible = true;
+        
         
         public XY_ChartView() {
             addChartViewListener(this);
@@ -400,8 +404,10 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             if (mousePosPx != null && mouseLocationVisible) {
                 Vector2D mousePosVal = upperLeftValue.add(px2val(mousePosPx));
                 
-                String locStr = String.format("x: %+f; y: %+f", mousePosVal.getX(), mousePosVal.getY());
-                g.drawString(locStr, 10, getHeight() - 10);
+                String str = String.format("x: %+f; y: %+f", mousePosVal.getX(), mousePosVal.getY());
+                LabelGroup labelGroup = new LabelGroup();
+                labelGroup.addLabel(new Label(str, Color.LIGHT_GRAY));
+                labelGroup.draw(g, OVERLAY_BG_COLOR, DrawOrigin.LOWER_LEFT, 0, getHeight(), 2, 2);
             }
         }
         

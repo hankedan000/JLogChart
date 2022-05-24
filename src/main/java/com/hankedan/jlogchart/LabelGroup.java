@@ -28,6 +28,24 @@ public class LabelGroup {
         labels.add(l);
     }
 
+    /**
+     * Draw the LabelGroup on the provided Graphics object.
+     * 
+     * @param g
+     * the Graphics to draw upon
+     * @param background
+     * the background color to use for the group
+     * @param origin
+     * the location of where (x,y) are defined relative to the group's box
+     * @param x
+     * the x position of the group's origin relative to the Graphics
+     * @param y
+     * the y position of the group's origin relative to the Graphics
+     * @param xPadding
+     * left/right padding internal to the group's box
+     * @param yPadding 
+     * top/bottom padding internal to the group's box
+     */
     public void draw(Graphics g, Color background, DrawOrigin origin, int x, int y, int xPadding, int yPadding) {
         ArrayList<Rectangle2D> relBounds = new ArrayList<>(labels.size());
         FontMetrics fm = g.getFontMetrics();
