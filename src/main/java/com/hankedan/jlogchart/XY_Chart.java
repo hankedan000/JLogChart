@@ -78,6 +78,9 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
     private final double MARGIN_PERCENT = 0.1;
     private Vector2D upperLeftLocation = VectorUtils.MAX_VALUE;
     
+    // allows us to flip the axis so that +y is up
+    private Vector2D scale = new Vector2D(1, -1);
+    
     private Vector2D minBounds = null;
     private Vector2D maxBounds = null;
     
@@ -131,14 +134,16 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             if (allSeries.size() == 1) {
                 minBounds = (Vector2D)series.minValue();
                 maxBounds = (Vector2D)series.maxValue();
-                upperLeftLocation = minBounds;
             } else {
                 minBounds = VectorUtils.min(minBounds, (Vector2D)series.minValue());
                 maxBounds = VectorUtils.max(maxBounds, (Vector2D)series.maxValue());
             }
+            
+            // FIXME this isn't taking into acount the 'scale' member
+            upperLeftLocation = new Vector2D(minBounds.getX(), maxBounds.getY());
             logger.log(Level.FINE,
-                    "minBounds = {0}; maxBounds = {1}; ",
-                    new Object[]{minBounds,maxBounds});
+                    "minBounds = {0}; maxBounds = {1}; upperLeftLocation = {2}; ",
+                    new Object[]{minBounds,maxBounds,upperLeftLocation});
             
             repaint();
         }
@@ -331,7 +336,9 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
                 pxPerValue = (double)getWidth() / dataDiag.getX();
             }
             Vector2D middle = minBounds.add(dataDiag.scalarMultiply(0.5));
-            upperLeftLocation = middle.subtract(dispDiag.scalarMultiply(0.5/pxPerValue));
+            double upperLeftLocX = middle.getX() - (dispDiag.getX() * (0.5 / pxPerValue) * scale.getX());
+            double upperLeftLocY = middle.getY() - (dispDiag.getY() * (0.5 / pxPerValue) * scale.getY());
+            upperLeftLocation = new Vector2D(upperLeftLocX, upperLeftLocY);
             
             repaint();
         }
@@ -429,7 +436,9 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
          * the converted vector
          */
         private Vector2D px2val(Vector2D pxVect) {
-            return pxVect.scalarMultiply(1.0 / pxPerValue);
+            double x = pxVect.getX() * scale.getX() / pxPerValue;
+            double y = pxVect.getY() * scale.getY() / pxPerValue;
+            return new Vector2D(x, y);
         }
         
         /**
@@ -449,7 +458,9 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
         }
         
         private Vector2D val2px(Vector2D valVect) {
-            return valVect.scalarMultiply(pxPerValue);
+            double x = valVect.getX() * scale.getX() * pxPerValue;
+            double y = valVect.getY() * scale.getY() * pxPerValue;
+            return new Vector2D(x,y);
         }
 
         /**
@@ -512,10 +523,18 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
             if (dragVectorPx != null) {
                 upperLeftValue = upperLeftLocation.subtract(px2val(dragVectorPx));
             }
-            drawVisibleSeries(g, upperLeftValue);
             
+            // flip axis according to scale when drawing series data
+            Graphics2D g2d = (Graphics2D)g;
+            g2d.scale(scale.getX(), scale.getY());
+            
+            drawVisibleSeries(g, upperLeftValue);
             drawSeriesBoundMarkers(g, upperLeftValue);
             drawFloatingMarkers(g, upperLeftValue);
+            
+            // flip axis back when drawing overlays, so text looks normal
+            g2d.scale(scale.getX(), scale.getY());
+            
             drawOverlays(g, upperLeftValue);
         }
 
