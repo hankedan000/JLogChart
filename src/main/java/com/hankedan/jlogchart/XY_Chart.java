@@ -22,8 +22,11 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JCheckBoxMenuItem;
@@ -42,7 +45,7 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
     private final XY_ChartView view = new XY_ChartView();
     
     // Map of all added chart series data vectors
-    private final List<Series<Vector2D>> allSeries = new ArrayList<>();
+    private final Queue<Series<Vector2D>> allSeries = new ConcurrentLinkedQueue<>();
     
     private final MarkerManager markerMgr = new MarkerManager();
 
@@ -169,8 +172,8 @@ public class XY_Chart extends javax.swing.JPanel implements Series.SeriesChangeL
      * @return
      * An immutable list of all the FixedRateSeries that are added to the chart
      */
-    public List<Series<Vector2D>> getAllSeries() {
-        return Collections.unmodifiableList(allSeries);
+    public Collection<Series<Vector2D>> getAllSeries() {
+        return Collections.unmodifiableCollection(allSeries);
     }
     
     public Series<Vector2D> getSeriesByName(String name) {

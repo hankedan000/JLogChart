@@ -26,8 +26,11 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoundedRangeModel;
@@ -69,7 +72,7 @@ public class JLogChart extends javax.swing.JPanel implements
     private final BoundedRangeModel xRange;
 
     // Map of all added chart series data vectors
-    private final List<Series<Double>> allSeries = new ArrayList<>();
+    private final Queue<Series<Double>> allSeries = new ConcurrentLinkedQueue<>();
     
     private final MarkerManager markerMgr = new MarkerManager();
 
@@ -191,11 +194,11 @@ public class JLogChart extends javax.swing.JPanel implements
     }
 
     public void removeSeries(String name) {
-        int idxToRemove = -1;
-        for (int i=0; i<allSeries.size(); i++) {
-            Series series = allSeries.get(i);
-            if (series.name.compareTo(name) == 0) {
-                idxToRemove = i;
+        Object itemToRemove = null;
+        for (Series s : allSeries) {
+            if (s.name.compareTo(name) == 0) {
+                itemToRemove = s;
+                break;
             }
         }
             
@@ -203,8 +206,8 @@ public class JLogChart extends javax.swing.JPanel implements
         markerMgr.removeSeriesMarkers(name);
 
         // Remove the found series
-        if (idxToRemove >= 0) {
-            allSeries.remove(idxToRemove);
+        if (itemToRemove != null) {
+            allSeries.remove(itemToRemove);
         } else {
             logger.log(Level.WARNING,
                     "Unknown series {0}. Ignoring remove.",
@@ -219,8 +222,8 @@ public class JLogChart extends javax.swing.JPanel implements
      * @return
      * An immutable list of all the FixedRateSeries that are added to the chart
      */
-    public List<Series<Double>> getAllSeries() {
-        return Collections.unmodifiableList(allSeries);
+    public Collection<Series<Double>> getAllSeries() {
+        return Collections.unmodifiableCollection(allSeries);
     }
     
     public Series<Double> getSeriesByName(String name) {
